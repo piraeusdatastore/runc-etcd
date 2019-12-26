@@ -1,16 +1,16 @@
 [Unit]
-Description=Portworx Etcd OCI Container
-Documentation=https://docs.portworx.com/runc
-Before=portworx.service
+Description=Etcd OCI Container
+Documentation=
+Before=
  
 [Service]
 Type=simple
 EnvironmentFile=-/etc/default/%p
-WorkingDirectory=/opt/pwx-etcd/oci
-ExecStartPre=/bin/sh -c "/opt/pwx-etcd/bin/runc delete -f portworx-etcd || true"
-ExecStart=/opt/pwx-etcd/bin/runc run --pid-file=/run/pwx-etcd.pid portworx-etcd
-ExecStopPost=/opt/pwx-etcd/bin/runc delete -f portworx-etcd
-PIDFile=/run/pwx-etcd.pid
+WorkingDirectory=/opt/runc-etcd/oci
+ExecStartPre=/bin/sh -c "/opt/runc-etcd/bin/runc delete -f runc-etcd || true"
+ExecStart=/opt/runc-etcd/bin/runc run --pid-file=/run/runc-etcd.pid runc-etcd
+ExecStopPost=/opt/runc-etcd/bin/runc delete -f runc-etcd
+PIDFile=/run/runc-etcd.pid
 Restart=always
 RestartSec=5
 RestartPreventExitStatus=10

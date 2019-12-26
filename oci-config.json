@@ -8,9 +8,14 @@
         },
         "args": [
             "etcd",
-            "--name", "_PX_ETCD_NAME_"
+            "--config-file", "/etcd.conf.yml"
         ],
         "env": [
+            "PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin",
+            "TERM=xterm",
+            "GOMAXPROCS=8",
+            "ETCDCTL_API=",
+            "ETCDCTL_ENDPOINTS="
         ],
         "cwd": "/",
         "capabilities": {
@@ -148,22 +153,22 @@
              "type": "bind"
         },
         {
-             "destination": "/.pwx-etcd/data",
-             "options": [
-                     "rbind",
-                     "rprivate"
-             ],
-             "source": "_PX_ETCD_DATA_DIR_/data",
-                    "type": "bind"
-        },
-        {
             "destination": "/etc/localtime",
             "options": [
-                "rbind",
-                "rprivate"
+                "ro",
+                "rbind"
             ],
             "source": "/etc/localtime",
             "type": "bind"
+        },
+        {
+            "destination": "/.etcd/data",
+            "options": [
+                    "rbind",
+                    "rprivate"
+            ],
+            "source": "_ETCD_DATA_DIR_/data",
+                   "type": "bind"
         }
     ],
     "linux": {

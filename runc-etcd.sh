@@ -14,7 +14,7 @@ source ${SCRIPT_DIR}/lib/bash_colors.sh
 source ${SCRIPT_DIR}/lib/confirm.sh
 source ${SCRIPT_DIR}/lib/shflags.sh 
 
-DEFINE_string 'registry' 'daocloud.io/portworx' 'Docker registry address' 'r'
+DEFINE_string 'registry' 'quay.io/coreos' 'Docker registry address' 'r'
 DEFINE_string 'tag' 'latest' 'Image tag' 't'
 DEFINE_string 'ip' '' 'IP' 'i'
 DEFINE_string 'peer_port' '19018' 'Peer point' 'e'
@@ -29,16 +29,16 @@ DEFINE_boolean 'hide_init_cluster' false 'Hide "INIT_CLUSTER=" from env' 'd'
 # Default parameters
 : ${IMAGE:=etcd}
 : ${DATA_DIR:=/var/local/runc-etcd}
-: ${CLUSTER_TOKEN:=pwx}
+: ${CLUSTER_TOKEN:=runc-etcd}
 : ${TIMESTAMP:=$( date +%Y-%m-%d_%H-%M-%S )}
 
 FLAGS_HELP=$( cat <<EOF
 NAME:
-  $0 - A script to maintain etcd cluster for PX
+  $0 - A script to maintain etcd cluster
 
 $( clr_brown WARNING ):
   1. Only use this script after consulting DaoCloud
-  2. PX production requires a 3 or 5 nodes etcd cluster
+  2. Production requires a 3 or 5 nodes etcd cluster
 
 USAGE:
   bash $0 [flags] [ACTION]
@@ -51,7 +51,7 @@ ACTION:
    status               Check cluster health
    printenv -[k]        Display environment variables
    upgrade  -[rt]       Upgrade the local node
-   del_pwx  -[ak]       Delete PX keys $( clr_red DANGEROUS! )
+   del_prefix -[ak]     Delete keys under a prefix $( clr_red DANGEROUS! )
    hide_init_cluster    Hide "INITIAL_CLUSTER=" from env         
 EOF
 )  
@@ -88,7 +88,7 @@ _main() {
         status            )        _status            ;;
         upgrade           )        _upgrade           ;;
         printenv          )        _printenv          ;;
-        del_pwx           )        _del_pwx           ;;
+        del_prefix        )        _del_prefix        ;;
         hide_init_cluster )        _hide_init_cluster ;;   
         help              )        flags_help         ;;
         *                 )
@@ -169,19 +169,19 @@ _remove() {
 
     # Gracefully check and deregister
     if [ ${FLAGS_force} -eq ${FLAGS_FALSE} ]; then
-        if /opt/runc-etcd/bin/runc list | grep -qw "portworx-etcd .* running"; then 
+        if /opt/runc-etcd/bin/runc list | grep -qw "runc-etcd .* running"; then 
             clr_green "Check local member status"
-            LOCAL_MEMBER_SPEC=$( /opt/runc-etcd/bin/runc exec -e ETCDCTL_API=2 portworx-etcd sh -c "etcdctl member list | grep -w \${ETCD_LISTEN_CLIENT_URLS}" )
+            LOCAL_MEMBER_SPEC=$( /opt/runc-etcd/bin/runc exec -e ETCDCTL_API=2 runc-etcd sh -c "etcdctl member list | grep -w \${ETCD_LISTEN_CLIENT_URLS}" )
             echo ${LOCAL_MEMBER_SPEC}
             LOCAL_MEMBER_ID=$( echo ${LOCAL_MEMBER_SPEC} | awk 'BEGIN {FS =":"}{print $1}' )
-            /opt/runc-etcd/bin/runc exec -e ETCDCTL_API=2 portworx-etcd etcdctl cluster-health | grep ${LOCAL_MEMBER_ID}
+            /opt/runc-etcd/bin/runc exec -e ETCDCTL_API=2 runc-etcd etcdctl cluster-health | grep ${LOCAL_MEMBER_ID}
         
             clr_green "Deregister local member from etcd cluster"
-            MEMBER_COUNT=$( /opt/runc-etcd/bin/runc exec -e ETCDCTL_API=2 portworx-etcd etcdctl member list | wc -l )
+            MEMBER_COUNT=$( /opt/runc-etcd/bin/runc exec -e ETCDCTL_API=2 runc-etcd etcdctl member list | wc -l )
             if [[ "${MEMBER_COUNT}" == "1" ]]; then
                 clr_brown "WARN: this is the last member, the cluster will be destroyed"
             else
-                /opt/runc-etcd/bin/runc exec -e ETCDCTL_API=2 portworx-etcd etcdctl member remove ${LOCAL_MEMBER_ID}
+                /opt/runc-etcd/bin/runc exec -e ETCDCTL_API=2 runc-etcd etcdctl member remove ${LOCAL_MEMBER_ID}
             fi
         else 
             clr_brown "WARN: runc-etcd seems not running on this host, use --force"
@@ -192,10 +192,10 @@ _remove() {
     fi
 
     # Stop service
-    clr_brown "WARN: Stop and remove portworx-etcd.service"
-    if [ -f /etc/systemd/system/portworx-etcd.service ]; then
-        systemctl stop --now portworx-etcd
-        rm -vf /etc/systemd/system/portworx-etcd.service
+    clr_brown "WARN: Stop and remove runc-etcd.service"
+    if [ -f /etc/systemd/system/runc-etcd.service ]; then
+        systemctl stop --now runc-etcd
+        rm -vf /etc/systemd/system/runc-etcd.service
         systemctl daemon-reload
     fi
     
@@ -216,8 +216,8 @@ _upgrade() {
     clr_green "Upgrade etcd version to"
     echo ${IMAGE_ADDR}
 
-    clr_green "Stop portworx-etcd.service"
-    systemctl stop --now portworx-etcd
+    clr_green "Stop runc-etcd.service"
+    systemctl stop --now runc-etcd
 
     clr_green "Backup oci files" 
     mv -vf /opt/runc-etcd/oci/rootfs /opt/runc-etcd/oci/rootfs_${TIMESTAMP}
@@ -241,26 +241,26 @@ _extract_rootfs() {
 }
 
 _start_service() {
-    clr_green "Start portworx-etcd.service"
+    clr_green "Start runc-etcd.service"
     systemctl daemon-reload
-    systemctl enable --now portworx-etcd
+    systemctl enable --now runc-etcd
     sleep 5
-    systemctl status portworx-etcd | grep -w "Loaded\|Active"
+    systemctl status runc-etcd | grep -w "Loaded\|Active"
 
 }
 
 _status() { 
     clr_green "Check cluster health"
-    /opt/runc-etcd/bin/runc exec -e ETCDCTL_API=2 portworx-etcd etcdctl -v
+    /opt/runc-etcd/bin/runc exec -e ETCDCTL_API=2 runc-etcd etcdctl -v
 
-    /opt/runc-etcd/bin/runc exec -e ETCDCTL_API=2 portworx-etcd etcdctl cluster-health \
+    /opt/runc-etcd/bin/runc exec -e ETCDCTL_API=2 runc-etcd etcdctl cluster-health \
     | sed -r "s/( healthy)/$(clr_cyan \\1)/g; s/(degraded|unreachable)/$(clr_red \\1)/g" || true      
 
-    /opt/runc-etcd/bin/runc exec -e ETCDCTL_API=2 portworx-etcd etcdctl member list \
+    /opt/runc-etcd/bin/runc exec -e ETCDCTL_API=2 runc-etcd etcdctl member list \
     | sed -r "s/(isLeader=true)/$(clr_cyan \\1)/g"  || true
 
-    clr_green "For PX configuration:"
-    /opt/runc-etcd/bin/runc exec -e ETCDCTL_API=2 portworx-etcd etcdctl cluster-health \
+    clr_green "For configuration:"
+    /opt/runc-etcd/bin/runc exec -e ETCDCTL_API=2 runc-etcd etcdctl cluster-health \
     | awk '/http/ {print "etcd:"$NF}' \
     | paste -sd "," -
    
@@ -268,19 +268,19 @@ _status() {
 
 _printenv() {
     clr_green "Environment variables:"
-    /opt/runc-etcd/bin/runc exec -e ETCDCTL_API=2 portworx-etcd printenv ${FLAGS_key}
+    /opt/runc-etcd/bin/runc exec -e ETCDCTL_API=2 runc-etcd printenv ${FLAGS_key}
    
     clr_green "Recognized variables:"
-    journalctl -lu portworx-etcd \
-    | tac | grep -m1 -B100 "Started Portworx Etcd OCI Container" \
+    journalctl -lu runc-etcd \
+    | tac | grep -m1 -B100 "Started Etcd OCI Container" \
     | tac | grep "recognized and used environment variable ${FLAGS_key}"
 }
 
 _cmd_ref() {
     clr_green "Command reference"
-    echo "$( clr_brown 'Watch log:' )        journalctl -fu portworx-etcd"
+    echo "$( clr_brown 'Watch log:' )        journalctl -fu runc-etcd"
     echo "$( clr_brown 'Watch container:' )  /opt/runc-etcd/bin/runc list"
-    echo "$( clr_brown 'Check health:' )     /opt/runc-etcd/bin/runc exec -e ETCDCTL_API=2 portworx-etcd etcdctl cluster-health"
+    echo "$( clr_brown 'Check health:' )     /opt/runc-etcd/bin/runc exec -e ETCDCTL_API=2 runc-etcd etcdctl cluster-health"
 }
 
 
@@ -291,48 +291,48 @@ _install() {
     mkdir -vp /opt/runc-etcd/oci/rootfs 
     mkdir -vp /var/local/runc-etcd/data
     cp -vf ${SCRIPT_DIR}/runc /opt/runc-etcd/bin/
-    cp -vf ${SCRIPT_DIR}/runc-etcd-config.json /opt/runc-etcd/oci/config.json
-    cp -vf ${SCRIPT_DIR}/portworx-etcd.service /etc/systemd/system/
+    chmod +x -R /opt/runc-etcd/bin/
+    cp -vf ${SCRIPT_DIR}/oci-config.json /opt/runc-etcd/oci/config.json
+    cp -vf ${SCRIPT_DIR}/runc-etcd.service /etc/systemd/system/
 
     # Extract roofts 
     clr_green "Extract OCI rootfs" 
     _extract_rootfs
 
-    # Generate enivronment variables
-    cat > etcd_env.txt <<EOF
-            "PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin",
-            "TERM=xterm",
-            "GOMAXPROCS=8",
-            "ETCD_DATA_DIR=/.runc-etcd/data",
-            "ETCD_ADVERTISE_CLIENT_URLS=http://${HOST_IP}:${CLIENT_PORT}",
-            "ETCD_LISTEN_PEER_URLS=http://${HOST_IP}:${PEER_PORT}",
-            "ETCD_LISTEN_CLIENT_URLS=http://${HOST_IP}:${CLIENT_PORT}",
-            "ETCD_INITIAL_ADVERTISE_PEER_URLS=http://${HOST_IP}:${PEER_PORT}",
-            "ETCD_INITIAL_CLUSTER=${EXISTING_CLUSTER}runc-etcd-${HOST_IP}-${CLIENT_PORT}=http://${HOST_IP}:${PEER_PORT}",
-            "ETCD_INITIAL_CLUSTER_STATE=${CLUSTER_STATE}",
-            "ETCD_INITIAL_CLUSTER_TOKEN=${CLUSTER_TOKEN}",
-            "ETCD_AUTO_COMPACTION_RETENTION=3",
-            "ETCD_QUOTA_BACKEND_BYTES=$(( 8 * 1024 ** 3))",
-            "ETCD_SNAPSHOT_COUNT=5000",
-            "ETCDCTL_ENDPOINTS=http://${HOST_IP}:${CLIENT_PORT}",
-            "ETCD_ENABLE_V2=true"
+    # Generate etcd config-file
+    clr_green "Set etcd config file"
+    cat > /opt/runc-etcd/oci/rootfs/etcd.conf.yml <<EOF
+name: etcd-${HOST_IP}-${CLIENT_PORT}
+max-txn-ops: 1024
+data-dir: /.etcd/data
+advertise-client-urls: http://${HOST_IP}:${CLIENT_PORT}
+listen-peer-urls: http://${HOST_IP}:${PEER_PORT}
+listen-client-urls: http://${HOST_IP}:${CLIENT_PORT}
+initial-advertise-peer-urls: http://${HOST_IP}:${PEER_PORT}
+initial-cluster: ${EXISTING_CLUSTER}etcd-${HOST_IP}-${CLIENT_PORT}=http://${HOST_IP}:${PEER_PORT}
+initial-cluster-state: ${CLUSTER_STATE}
+initial-cluster-token: ${CLUSTER_TOKEN}
+auto-compaction-rate: 3
+quota-backend-bytes: $(( 8 * 1024 ** 3))
+snapshot-count: 5000
+enable-v2: true
 EOF
+    cat /opt/runc-etcd/oci/rootfs/etcd.conf.yml | column -t
 
-    # Generate config.json
-    sed -i "s#_PX_ETCD_NAME_#runc-etcd-${HOST_IP}-${CLIENT_PORT}#" /opt/runc-etcd/oci/config.json
-    sed -i "s#_PX_ETCD_DATA_DIR_#${DATA_DIR}#" /opt/runc-etcd/oci/config.json
-    sed -i '/"env": \[/ r etcd_env.txt' /opt/runc-etcd/oci/config.json
-    rm -fr etcd_env.txt 
-   
     # Verify config.json
     clr_green "Set OCI args"
     grep -A3 '\"args\"\: \[' /opt/runc-etcd/oci/config.json
-    clr_green "Set OCI datadir binding"
-    grep -A7 -B1 '"destination": "/.runc-etcd/data"' /opt/runc-etcd/oci/config.json
-    clr_green "Set OCI env"
-    grep -A16 '\"env\"\: \[' /opt/runc-etcd/oci/config.json 
 
-    # Start portworx-etcd.service
+    clr_green "Set OCI datadir binding"
+    sed -i "s#_ETCD_DATA_DIR_#${DATA_DIR}#" /opt/runc-etcd/oci/config.json
+    grep -A7 -B1 '"destination": "/.etcd/data' /opt/runc-etcd/oci/config.json
+
+    clr_green "Set OCI env"
+    sed -i "s#ETCDCTL_API=#&2#" /opt/runc-etcd/oci/config.json
+    sed -i "s#ETCDCTL_ENDPOINTS=#&http://${HOST_IP}:${CLIENT_PORT}#" /opt/runc-etcd/oci/config.json
+    grep -A6 '\"env\"\: \[' /opt/runc-etcd/oci/config.json 
+
+    # Start runc-etcd.service
     _start_service    
 
     # Check cluster health 
@@ -350,40 +350,32 @@ _hide_init_cluster() {
     sed -i '/ETCD_INITIAL_CLUSTER=/d' /opt/runc-etcd/oci/config.json
     sed -i 's/ETCD_INITIAL_CLUSTER_STATE=new/ETCD_INITIAL_CLUSTER_STATE=existing/' /opt/runc-etcd/oci/config.json
 
-    clr_brown "WARN: Restart portworx-etcd.service"    
+    clr_brown "WARN: Restart runc-etcd.service"    
     confirm ${FLAGS_yes} || exit 1
-    systemctl restart portworx-etcd
+    systemctl restart runc-etcd
     sleep 3
     _printenv 
 }
 
-_del_pwx() {
+_del_prefix() {
     clr_red "ATTENTION: Will ireversibly delete user data!"
 
     if [ ${FLAGS_all} -eq ${FLAGS_TRUE} ]; then
-        PX_UID=""
-        clr_brown "WARN: Delete all pwx/ entries!"
+        PREFIX=""
+        clr_brown "WARN: Delete all / entries!"
     elif [ ! -z ${FLAGS_key} ]; then
-        PX_UID=${FLAGS_key}
-        clr_brown "WARN: Delete pwx/${PX_UID} entries!"
+        PREFIX=${FLAGS_key}
+        clr_brown "WARN: Delete ${PREFIX} entries!"
     else
-        clr_red "ERROR: Need to provide PX cluster UID or use --all"
+        clr_red "ERROR: Need to provide prefix or use --all"
         exit 1
     fi
 
     confirm ${FLAGS_yes} || exit 1
 
-    clr_brown "Check number of etcd entries for PX cluser UID: ${PX_UID}"
+    clr_brown "Check number of etcd entries for prefix: ${PREFIX}"
     /opt/runc-etcd/bin/runc exec -e ETCDCTL_API=2 -e ETCDCTL_API=3 \
-    portworx-etcd etcdctl get --prefix "pwx/${PX_UID}" | wc -l
-
-    clr_brown "Delete etcd entries for PX cluster UID: ${PX_UID}"
-    /opt/runc-etcd/bin/runc exec -e ETCDCTL_API=2 -e ETCDCTL_API=3 \
-    portworx-etcd etcdctl del --prefix "pwx/${PX_UID}"
-
-    clr_brown "Check number of etcd entries for PX cluster UID: ${PX_UID}"
-    /opt/runc-etcd/bin/runc exec -e ETCDCTL_API=2 -e ETCDCTL_API=3 \
-    portworx-etcd etcdctl get --prefix "pwx/${PX_UID}" | wc -l
+    runc-etcd etcdctl get --prefix "${PREFIX}" | wc -l
 }
 
 FLAGS "$@" || exit $?
