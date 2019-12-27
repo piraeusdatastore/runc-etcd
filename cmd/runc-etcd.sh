@@ -25,6 +25,7 @@ DEFINE_boolean 'pull' false 'Enforce pull image' 'p'
 DEFINE_boolean 'yes' false 'Answer "yes" to confirm' 'y'
 DEFINE_boolean 'force' false 'Force' 'f'
 DEFINE_boolean 'hide_init_cluster' false 'Hide "INIT_CLUSTER=" from env' 'd'
+DEFINE_boolean 'debug' false 'Enable debug output' 'x'
 
 # Default parameters
 : ${IMAGE:=etcd}
@@ -52,7 +53,7 @@ ACTION:
    printenv -[k]        Display environment variables
    upgrade  -[rt]       Upgrade the local node
    del_prefix -[ak]     Delete keys under a prefix $( clr_red DANGEROUS! )
-   hide_init_cluster    Hide "INITIAL_CLUSTER=" from env         
+   hide_init_cluster    Hide "INITIAL_CLUSTER=" from env        
 EOF
 )  
 
@@ -72,6 +73,8 @@ _main() {
     UPGRADE=false
 
     # Parse flags
+    [ ${FLAGS_debug} -eq ${FLAGS_TRUE} ] && set -x
+
     if [ -z "${FLAGS_registry}" ]; then
         IMAGE_ADDR=${IMAGE}:${FLAGS_tag}
     else
@@ -144,7 +147,13 @@ _join() {
         clr_red "ERROR: This host is already registered to the cluster"
         exit 1
     fi
-     
+
+    # Add cluster member
+    clr_green "Join etcd cluster"
+    echo New node: http://${HOST_IP}:${CLIENT_PORT}
+    EXISTING_CLUSTER=$( curl -s ${REMOTE_API}/v2/members | sed 's#","peerURLs":\["#=#g; s#"#\n#g' | awk ' /etcd/ {print}' ORS=',' )
+    CLUSTER_STATE=existing
+
     # Register new member 
     clr_green "Register node ${HOST_IP} to etcd cluster"
     if curl -s ${REMOTE_API}/v2/members -XPOST -H "Content-Type: application/json" -d "{\"name\":\"runc-etcd-${HOST_IP}-${CLIENT_PORT}\",\"peerURLs\":[\"http://${HOST_IP}:${PEER_PORT}\"]}"; then
@@ -154,11 +163,6 @@ _join() {
         exit 1
     fi
 
-    # Add cluster member
-    clr_green "Join etcd cluster"
-    echo New node: http://${HOST_IP}:${CLIENT_PORT}
-    EXISTING_CLUSTER=$( curl -s ${REMOTE_API}/v2/members | sed 's#","peerURLs":\["#=#g; s#"#\n#g' | awk ' /runc-etcd/ {print}' ORS=',' )
-    CLUSTER_STATE=existing
     _install
 }
 
