@@ -32,6 +32,7 @@ DEFINE_boolean 'debug' false 'Enable debug output' 'x'
 : ${DATA_DIR:=/var/local/runc-etcd}
 : ${CLUSTER_TOKEN:=runc-etcd}
 : ${TIMESTAMP:=$( date +%Y-%m-%d_%H-%M-%S )}
+export ETCDCTL_API=2
 
 FLAGS_HELP=$( cat <<EOF
 NAME:
@@ -101,6 +102,11 @@ _main() {
     esac
 }
 
+_etcdctl() {
+
+    /opt/runc-etcd/oci/rootfs/usr/local/bin/etcdctl $@
+}
+
 _create() { 
     [ -z ${FLAGS_ip} ] && clr_red "ERROR: Must provide an IP or Hostname by --ip" && exit 1
 
@@ -117,6 +123,9 @@ _create() {
     echo New node: http://${HOST_IP}:${CLIENT_PORT}
     EXISTING_CLUSTER=""
     CLUSTER_STATE=new
+
+    _extract_rootfs
+
     _install
 }
 
@@ -127,10 +136,14 @@ _join() {
     REMOTE_PORT=${CLIENT_PORT}
 
     REMOTE_API=http://${REMOTE_IP}:${REMOTE_PORT}
+    export ETCDCTL_ENDPOINTS=${REMOTE_API}
 
-    clr_green "Curl ${REMOTE_API}/health"
+    _extract_rootfs
+
+    clr_green "Check ${REMOTE_API}/health"
+
     # Check remote IP and find local IP
-    if curl -s ${REMOTE_API}/health; then
+    if _etcdctl cluster-health; then
         echo
         HOST_IP=$( ip route get ${REMOTE_IP} | sed 's# #\n#g' | awk '/src/ {getline; print}' )  
         if [[ "${HOST_IP}" == "${REMOTE_IP}" ]]; then
@@ -143,7 +156,7 @@ _join() {
     fi     
 
     # Check the local IP is already registered   
-    if curl -s ${REMOTE_API}/v2/members | grep ${HOST_IP}; then
+    if _etcdctl member list | grep ${HOST_IP}; then
         clr_red "ERROR: This host is already registered to the cluster"
         exit 1
     fi
@@ -151,12 +164,12 @@ _join() {
     # Add cluster member
     clr_green "Join etcd cluster"
     echo New node: http://${HOST_IP}:${CLIENT_PORT}
-    EXISTING_CLUSTER=$( curl -s ${REMOTE_API}/v2/members | sed 's#","peerURLs":\["#=#g; s#"#\n#g' | awk ' /etcd/ {print}' ORS=',' )
+    EXISTING_CLUSTER=$( _etcdctl member list | awk '/name=/ {print $2"="$3}' | sed 's/name=//; s/peerURLs=//' | tr '\n' ',' )
     CLUSTER_STATE=existing
 
     # Register new member 
     clr_green "Register node ${HOST_IP} to etcd cluster"
-    if curl -s ${REMOTE_API}/v2/members -XPOST -H "Content-Type: application/json" -d "{\"name\":\"runc-etcd-${HOST_IP}-${CLIENT_PORT}\",\"peerURLs\":[\"http://${HOST_IP}:${PEER_PORT}\"]}"; then
+    if _etcdctl member add ${HOSTNAME}-${HOST_IP} http://${HOST_IP}:${PEER_PORT}; then
         echo
     else
         clr_red "ERROR: Failed to register ${HOST_IP} to the cluster" 
@@ -237,8 +250,10 @@ _upgrade() {
 }
 
 _extract_rootfs() {
+    clr_green "Extract OCI rootfs" 
     [ ${FLAGS_pull} -eq ${FLAGS_TRUE} ] || ${UPGRADE} && docker pull ${IMAGE_ADDR}
     printf "${IMAGE_ADDR}  "
+    mkdir -vp /opt/runc-etcd/oci/rootfs
     docker export $( docker create --rm ${IMAGE_ADDR} ) | \
     tar -C /opt/runc-etcd/oci/rootfs --checkpoint=200 --checkpoint-action=exec='printf "\b=>"' -xf -
     echo " /opt/runc-etcd/oci/rootfs/"
@@ -292,36 +307,31 @@ _install() {
     # Copy files
     clr_green "Copy control files"
     mkdir -vp /opt/runc-etcd/bin 
-    mkdir -vp /opt/runc-etcd/oci/rootfs 
     mkdir -vp /var/local/runc-etcd/data
     cp -vf ${SCRIPT_DIR}/runc /opt/runc-etcd/bin/
     chmod +x -R /opt/runc-etcd/bin/
     cp -vf ${SCRIPT_DIR}/oci-config.json /opt/runc-etcd/oci/config.json
     cp -vf ${SCRIPT_DIR}/runc-etcd.service /etc/systemd/system/
 
-    # Extract roofts 
-    clr_green "Extract OCI rootfs" 
-    _extract_rootfs
-
     # Generate etcd config-file
     clr_green "Set etcd config file"
     cat > /opt/runc-etcd/oci/rootfs/etcd.conf.yml <<EOF
-name: etcd-${HOST_IP}-${CLIENT_PORT}
-max-txn-ops: 1024
-data-dir: /.etcd/data
-advertise-client-urls: http://${HOST_IP}:${CLIENT_PORT}
-listen-peer-urls: http://${HOST_IP}:${PEER_PORT}
-listen-client-urls: http://${HOST_IP}:${CLIENT_PORT}
+name:                        ${HOSTNAME}-${HOST_IP}
+max-txn-ops:                 1024
+data-dir:                    /.etcd/data
+advertise-client-urls:       http://${HOST_IP}:${CLIENT_PORT}
+listen-peer-urls:            http://${HOST_IP}:${PEER_PORT}
+listen-client-urls:          http://${HOST_IP}:${CLIENT_PORT}
 initial-advertise-peer-urls: http://${HOST_IP}:${PEER_PORT}
-initial-cluster: ${EXISTING_CLUSTER}etcd-${HOST_IP}-${CLIENT_PORT}=http://${HOST_IP}:${PEER_PORT}
-initial-cluster-state: ${CLUSTER_STATE}
-initial-cluster-token: ${CLUSTER_TOKEN}
-auto-compaction-rate: 3
-quota-backend-bytes: $(( 8 * 1024 ** 3))
-snapshot-count: 5000
-enable-v2: true
+initial-cluster:             ${EXISTING_CLUSTER}${HOSTNAME}-${HOST_IP}=http://${HOST_IP}:${PEER_PORT}
+initial-cluster-state:       ${CLUSTER_STATE}
+initial-cluster-token:       ${CLUSTER_TOKEN}
+auto-compaction-rate:        3
+quota-backend-bytes:         $(( 8 * 1024 ** 3))
+snapshot-count:              5000
+enable-v2:                   true
 EOF
-    cat /opt/runc-etcd/oci/rootfs/etcd.conf.yml | column -t
+    cat /opt/runc-etcd/oci/rootfs/etcd.conf.yml
 
     # Verify config.json
     clr_green "Set OCI args"
