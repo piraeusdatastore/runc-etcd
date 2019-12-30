@@ -78,10 +78,10 @@ runc-etcd.sh
 ### Initiate cluster by creating first node
 ```
 $ runc-etcd/runc-etcd.sh create -i 192.168.176.151
-````
+```
 <details>
   <summary>sample output</summary>
-```
+<pre>
 Create etcd cluster
 New node: http://192.168.176.151:13379
 Extract OCI rootfs
@@ -150,7 +150,7 @@ Watch log:        journalctl -fu runc-etcd
 Watch container:  /opt/runc-etcd/bin/runc list
 Check health:     /opt/runc-etcd/bin/runc exec runc-etcd etcdctl cluster-health
 Expand cluster:   /root/etcd-mac/runc-etcd.sh join -i 192.168.176.151
-```
+</pre>
 </details>
 
 
