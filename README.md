@@ -1,4 +1,4 @@
-# Etcd by runC
+# Etcd by RunC
 
 ## Overview
 
