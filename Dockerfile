@@ -1,7 +1,5 @@
-FROM alpine
+FROM busybox
 
-COPY cmd /cmd
-
-COPY entry.sh /
-
-ENTRYPOINT [ "/entry.sh" ]
+COPY ./ /runc-etcd
+    
+ENTRYPOINT [ "/runc-etcd/entry.sh" ]
