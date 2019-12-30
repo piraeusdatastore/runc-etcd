@@ -72,7 +72,11 @@ flags:
 ```
 $ docker run --rm -v $(pwd):/drop piraeusdatastore/runc-etcd
 
-$ ls -1 runc-etcd
+$ ls runc-etcd
+```
+<details>
+  <summary>output example</summary>
+<pre>
 Dockerfile
 entry.sh
 etcd-backup.sh
@@ -83,7 +87,9 @@ README.md
 runc
 runc-etcd.service
 runc-etcd.sh
-```
+</pre>
+</details>
+
 ### Initiate cluster by creating first node
 ```
 $ runc-etcd/runc-etcd.sh create -i 192.168.176.151
