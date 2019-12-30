@@ -80,7 +80,7 @@ runc-etcd.sh
 $ runc-etcd/runc-etcd.sh create -i 192.168.176.151
 ```
 <details>
-  <summary>sample output</summary>
+  <summary>output example</summary>
 <pre>
 Create etcd cluster
 New node: http://192.168.176.151:13379
@@ -157,7 +157,10 @@ Expand cluster:   /root/etcd-mac/runc-etcd.sh join -i 192.168.176.151
 ### Expand cluster by joining other nodes 
 ```
 $ runc-etcd/runc-etcd.sh join -i 192.168.176.151
-
+```
+<details>
+  <summary>output example</summary>
+<pre>
 Extract OCI rootfs
 quay.io/coreos/etcd:latest  mkdir: created directory ‘/opt/runc-etcd’
 mkdir: created directory ‘/opt/runc-etcd/oci’
@@ -234,11 +237,16 @@ cluster is healthy
 For copy & paste:
 etcd:http://192.168.176.152:13379,etcd:http://192.168.176.151:13379
 etcd://192.168.176.152:13379,192.168.176.151:13379
-```  
+</pre>
+</details>
+
 ### Remove a node from cluster
 ```
 $ runc-etcd/runc-etcd.sh remove
-
+```
+<details>
+  <summary>output example</summary>
+<pre>
 ATTENTION: Will irreversibly delete all etcd data on this node!
 Continue (yes/no)? yes
 Yes, continue
@@ -256,13 +264,16 @@ mkdir: created directory ‘/var/local/runc-etcd-backup/2019-12-30_22-05-57’
 WARN: Remove files
 removed directory: ‘/opt/runc-etcd/’
 removed directory: ‘/var/local/runc-etcd’
-
-```
+</pre>
+</details>
 
 ### Check configuration
 ```
 $ runc-etcd/runc-etcd.sh getconf
-
+```
+<details>
+  <summary>output example</summary>
+<pre>
 Env:
 PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
 TERM=xterm
@@ -295,12 +306,16 @@ Data dir:
             "source": "/var/local/runc-etcd/data",
                    "type": "bind"
         }
-```
+</pre>
+</details>
 
 ### Check cluster status
 ```
 $ runc-etcd/runc-etcd.sh status
-
+```
+<details>
+  <summary>output example</summary>
+<pre>
 Check cluster health
 etcdctl version: 3.3.8
 API version: 2
@@ -314,12 +329,16 @@ cluster is healthy
 For copy & paste:
 etcd:http://192.168.176.152:13379,etcd:http://192.168.176.153:13379,etcd:http://192.168.176.151:13379
 etcd://192.168.176.152:13379,192.168.176.153:13379,192.168.176.151:13379
-```
+</pre>
+</details>
 
 ### Upgrade node
 ```
 $  runc-etcd/runc-etcd.sh upgrade -t v3.4.1
-
+```
+<details>
+  <summary>output example</summary>
+<pre>
 Upgrade etcd version to
 quay.io/coreos/etcd:v3.4.1
 Stop runc-etcd.service
@@ -353,4 +372,5 @@ cluster is healthy
 For copy & paste:
 etcd:http://192.168.176.153:13379,etcd:http://192.168.176.151:13379
 etcd://192.168.176.153:13379,192.168.176.151:13379
-```
+</pre>
+</details>
