@@ -313,6 +313,7 @@ etcd://192.168.176.152:13379,192.168.176.153:13379,192.168.176.151:13379
 ### Upgrade node
 ```
 $  runc-etcd/runc-etcd.sh upgrade -t v3.4.1
+
 Upgrade etcd version to
 quay.io/coreos/etcd:v3.4.1
 Stop runc-etcd.service
