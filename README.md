@@ -58,7 +58,7 @@ flags:
   -h,--help:  show this help (default: false)
 ```
 
-## Guide2
+## Guide
 ### Download script
 ```
 $ docker run --rm -v $(pwd):/drop piraeusdatastore/runc-etcd
@@ -229,7 +229,7 @@ For copy & paste:
 etcd:http://192.168.176.152:13379,etcd:http://192.168.176.151:13379
 etcd://192.168.176.152:13379,192.168.176.151:13379
 ```  
-### Remove node from cluster
+### Remove a node from cluster
 ```
 $ runc-etcd/runc-etcd.sh remove
 
@@ -253,7 +253,7 @@ removed directory: ‘/var/local/runc-etcd’
 
 ```
 
-### Check cluster configuration
+### Check configuration
 ```
 $ runc-etcd/runc-etcd.sh getconf
 
