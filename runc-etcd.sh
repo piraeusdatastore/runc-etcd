@@ -261,7 +261,6 @@ _upgrade() {
     
     _status
 
-    _cmd_ref
 }
 
 _extract_rootfs() {
@@ -293,6 +292,12 @@ _status() {
     clr_green "For copy & paste: "
     __etcdctl member list | awk '/name=/ {print "etcd:"$(NF-1)}' | sed 's/clientURLs=//g' | paste -sd "," -
     __etcdctl member list | awk '/name=/ {print $(NF-1)}' | sed 's#clientURLs=.*//##g' | paste -sd "," - | awk '{print "etcd://"$1}'
+
+    clr_green "Command reference"
+    echo "$( clr_brown 'Watch log:' )        journalctl -fu runc-etcd"
+    echo "$( clr_brown 'Watch container:' )  /opt/runc-etcd/bin/runc list"
+    echo "$( clr_brown 'Check health:' )     /opt/runc-etcd/bin/runc exec runc-etcd etcdctl cluster-health"
+    echo "$( clr_brown 'Expand cluster:' )   ${SCRIPT_DIR}/runc-etcd.sh join -i $( awk -F: '/listen-client-urls/{print $3}' /opt/runc-etcd/oci/rootfs/etcd.conf.yml | sed 's#/##g' )"
 }
 
 _getconf() {
@@ -304,13 +309,6 @@ _getconf() {
 
     clr_green "Data dir:"
     grep -A7 -B1 '"destination": "/.etcd/data' /opt/runc-etcd/oci/config.json
-}
-
-_cmd_ref() {
-    clr_green "Command reference"
-    echo "$( clr_brown 'Watch log:' )        journalctl -fu runc-etcd"
-    echo "$( clr_brown 'Watch container:' )  /opt/runc-etcd/bin/runc list"
-    echo "$( clr_brown 'Check health:' )     /opt/runc-etcd/bin/runc exec runc-etcd etcdctl cluster-health"
 }
 
 
@@ -362,9 +360,6 @@ EOF
 
     # Check cluster health 
     _status
-
-    # Tips
-    _cmd_ref
 
     # Hide init_cluster
     [ ${FLAGS_hide_init_cluster} -eq ${FLAGS_TRUE} ] && FLAGS_yes=true && _hide_init_cluster
