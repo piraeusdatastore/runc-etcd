@@ -1,8 +1,6 @@
 [Unit]
 Description=Etcd OCI Container
-Documentation=
-Before=
- 
+
 [Service]
 Type=simple
 EnvironmentFile=-/etc/default/%p
@@ -15,5 +13,6 @@ Restart=always
 RestartSec=5
 RestartPreventExitStatus=10
 KillMode=mixed
+
 [Install]
 WantedBy=multi-user.target
