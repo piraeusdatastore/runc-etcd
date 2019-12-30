@@ -1,8 +1,16 @@
 # Etcd by RunC
 
+## ToDo
+* add etcd backup
+* add etcd TLS
+
 ## Overview
 
 This project builds a bash script to containerize etcd by systemd-controlled runc. It provides only the basic initiation, join and removal operations of etcd cluster, and is NOT meant to perform all the functions of etcdctl. 
+
+## Motivation
+
+As many agile applications depend on Etcd for persistence, Etcd itself should NOT be agilely deployed. It needs to be deployed in a decoupled and consolidated manner. 
 
 ## Structure
 
@@ -11,6 +19,7 @@ systemd service => runc binary => etcd in container
 ## Compatibility
 * CentOS 7+
 * Ubuntu 16+
+* Etcd 2.6+
 
 ## Requirements 
 * Docker 
