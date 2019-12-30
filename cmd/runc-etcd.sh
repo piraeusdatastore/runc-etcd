@@ -39,8 +39,11 @@ NAME:
   $0 - A script to maintain etcd cluster
 
 $( clr_brown WARNING ):
-  1. Only use this script after consulting DaoCloud
+  1. Only use this script after consulting Piraeus team
   2. Production requires a 3 or 5 nodes etcd cluster
+
+LICENSE:
+    Apache 2.0
 
 USAGE:
   bash $0 [flags] [ACTION]
@@ -53,7 +56,7 @@ ACTION:
    status               Check cluster health
    getconf              Display configuration
    upgrade  -[rt]       Upgrade the local node
-   del_prefix -[ak]     Delete keys under a prefix in API 3 $( clr_red DANGEROUS! )
+   del_keys -[ak]       Delete keys under a key prefix in API 3 $( clr_red DANGEROUS! )
    hide_init_cluster    Hide "initial-cluster" from config       
 EOF
 )  
@@ -92,7 +95,7 @@ _main() {
         status            )        _status            ;;
         upgrade           )        _upgrade           ;;
         getconf           )        _getconf           ;;
-        del_prefix        )        _del_prefix        ;;
+        del_keys          )        _del_keys          ;;
         hide_init_cluster )        _hide_init_cluster ;;   
         help              )        flags_help         ;;
         *                 )
@@ -293,11 +296,14 @@ _status() {
 }
 
 _getconf() {
-    clr_green "printenv:"
+    clr_green "Env:"
     /opt/runc-etcd/bin/runc exec -e ETCDCTL_API=2 runc-etcd printenv
 
-    clr_green "etcd.conf.yml:"
+    clr_green "Config file:"
     cat /opt/runc-etcd/oci/rootfs/etcd.conf.yml
+
+    clr_green "Data dir:"
+    grep -A7 -B1 '"destination": "/.etcd/data' /opt/runc-etcd/oci/config.json
 }
 
 _cmd_ref() {
@@ -380,7 +386,7 @@ _hide_init_cluster() {
     _status 
 }
 
-_del_prefix() {
+_del_keys() {
     clr_red "ATTENTION: Will ireversibly delete user data!"
 
     if [ ${FLAGS_all} -eq ${FLAGS_TRUE} ]; then
@@ -396,11 +402,11 @@ _del_prefix() {
 
     confirm ${FLAGS_yes} || exit 1
 
-    clr_brown "Delete etcd entries for prefix: ${PREFIX}"
+    clr_brown "Delete entries for prefix: ${PREFIX}"
     /opt/runc-etcd/bin/runc exec -e ETCDCTL_API=3 \
     runc-etcd etcdctl del --prefix "${PREFIX}" 
 
-    clr_brown "Check number of etcd entries for prefix: ${PREFIX}"
+    clr_brown "Check number of entries for prefix: ${PREFIX}"
     /opt/runc-etcd/bin/runc exec -e ETCDCTL_API=3 \
     runc-etcd etcdctl get --prefix "${PREFIX}" | wc -l
 }
