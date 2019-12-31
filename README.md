@@ -7,7 +7,7 @@
 
 ## Overview
 
-This project builds a bash script to containerize etcd by systemd-controlled runc. It provides only the basic initiation, join&removal, backup&restore operations of etcd cluster, but does NOT meant to perform all the functions of etcdctl. 
+This project builds a bash script to containerize etcd by systemd-controlled runc. It provides only the basic initiation, join&removal, backup&restore operations of etcd cluster, but does NOT mean to perform all the functions of etcdctl. 
 
 ## Motivation
 
