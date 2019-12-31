@@ -433,7 +433,7 @@ drwxr-xr-x 3 root root   20 Dec 31 12:02 data
 </pre>
 </details>
 
-###restore
+### restore
 
 Restore only works for v3 keys. It will backup
 ```
