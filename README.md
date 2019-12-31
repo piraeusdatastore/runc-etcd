@@ -29,7 +29,7 @@ systemd service => runc binary => etcd in container
 ## Options
 ```
 NAME:
-  etcd-mac/runc-etcd.sh - A script to maintain etcd cluster
+  runc-etcd/runc-etcd.sh - A script to maintain etcd cluster
 
 WARNING:
   1. Only use this script after consulting Piraeus team
@@ -40,8 +40,8 @@ LICENSE:
     Apache 2.0
 
 USAGE:
-  bash etcd-mac/runc-etcd.sh [flags] [ACTION]
-  bash etcd-mac/runc-etcd.sh [ACTION] [flags]
+  bash runc-etcd/runc-etcd.sh [flags] [ACTION]
+  bash runc-etcd/runc-etcd.sh [ACTION] [flags]
 
 ACTION:
    create   -[rtiecp]   Create a single-node cluster from the local node
@@ -112,9 +112,9 @@ Copy control files
 mkdir: created directory ‘/opt/runc-etcd/bin’
 mkdir: created directory ‘/var/local/runc-etcd’
 mkdir: created directory ‘/var/local/runc-etcd/data’
-‘/root/etcd-mac/runc’ -> ‘/opt/runc-etcd/bin/runc’
-‘/root/etcd-mac/oci-config.json’ -> ‘/opt/runc-etcd/oci/config.json’
-‘/root/etcd-mac/runc-etcd.service’ -> ‘/etc/systemd/system/runc-etcd.service’
+‘/root/runc-etcd/runc’ -> ‘/opt/runc-etcd/bin/runc’
+‘/root/runc-etcd/oci-config.json’ -> ‘/opt/runc-etcd/oci/config.json’
+‘/root/runc-etcd/runc-etcd.service’ -> ‘/etc/systemd/system/runc-etcd.service’
 Set etcd config file
 name:                        k8s-master-1
 max-txn-ops:                 1024
@@ -169,7 +169,7 @@ Command reference
 Watch log:        journalctl -fu runc-etcd
 Watch container:  /opt/runc-etcd/bin/runc list
 Check health:     /opt/runc-etcd/bin/runc exec runc-etcd etcdctl cluster-health
-Expand cluster:   /root/etcd-mac/runc-etcd.sh join -i 192.168.176.151
+Expand cluster:   /root/runc-etcd/runc-etcd.sh join -i 192.168.176.151
 </pre>
 </details>
 
@@ -202,9 +202,9 @@ Copy control files
 mkdir: created directory ‘/opt/runc-etcd/bin’
 mkdir: created directory ‘/var/local/runc-etcd’
 mkdir: created directory ‘/var/local/runc-etcd/data’
-‘/root/etcd-mac/runc’ -> ‘/opt/runc-etcd/bin/runc’
-‘/root/etcd-mac/oci-config.json’ -> ‘/opt/runc-etcd/oci/config.json’
-‘/root/etcd-mac/runc-etcd.service’ -> ‘/etc/systemd/system/runc-etcd.service’
+‘/root/runc-etcd/runc’ -> ‘/opt/runc-etcd/bin/runc’
+‘/root/runc-etcd/oci-config.json’ -> ‘/opt/runc-etcd/oci/config.json’
+‘/root/runc-etcd/runc-etcd.service’ -> ‘/etc/systemd/system/runc-etcd.service’
 Set etcd config file
 name:                        k8s-master-2
 max-txn-ops:                 1024
@@ -487,6 +487,6 @@ Command reference
 Watch log:        journalctl -fu runc-etcd
 Watch container:  /opt/runc-etcd/bin/runc list
 Check health:     /opt/runc-etcd/bin/runc exec runc-etcd etcdctl cluster-health
-Expand cluster:   /root/etcd-mac/runc-etcd.sh join -i 192.168.176.151
+Expand cluster:   /root/runc-etcd/runc-etcd.sh join -i 192.168.176.151
 </pre>
 </details>
