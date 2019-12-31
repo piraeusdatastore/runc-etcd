@@ -435,7 +435,7 @@ drwxr-xr-x 3 root root   20 Dec 31 12:02 data
 
 ### Restore
 
-Restore only works for v3 keys. It will backup
+Restore only works for v3 keys. It will do another backup before apply the restore target. 
 ```
 runc-etcd.sh restore -s 2019-12-31_14-54-49
 ```
