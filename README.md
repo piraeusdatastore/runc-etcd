@@ -76,7 +76,7 @@ flags:
 ```
 docker run --rm -v $(pwd):/drop piraeusdatastore/runc-etcd
 
-ls runc-etcd
+ls ./runc-etcd
 ```
 <details>
   <summary>output example</summary>
