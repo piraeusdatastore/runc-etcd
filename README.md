@@ -3,6 +3,7 @@
 ## ToDo
 * add etcd TLS
 * use gojq
+* multiple deployments on the same node
 
 ## Overview
 
