@@ -74,9 +74,9 @@ flags:
 ## Guide
 ### Download script
 ```
-$ docker run --rm -v $(pwd):/drop piraeusdatastore/runc-etcd
+docker run --rm -v $(pwd):/drop piraeusdatastore/runc-etcd
 
-$ ls runc-etcd
+ls runc-etcd
 ```
 <details>
   <summary>output example</summary>
@@ -353,7 +353,7 @@ etcd://192.168.176.152:13379,192.168.176.153:13379,192.168.176.151:13379
 
 ### Upgrade node
 ```
-$  runc-etcd.sh upgrade -t v3.4.1
+runc-etcd.sh upgrade -t v3.4.1
 ```
 <details>
   <summary>output example</summary>
@@ -435,7 +435,7 @@ drwxr-xr-x 3 root root   20 Dec 31 12:02 data
 
 ### Restore
 
-Restore only works for v3 keys. It will do another backup before apply the restore target. 
+Restore only works for v3 keys. It will do another backup before applying the restore target. 
 ```
 runc-etcd.sh restore -s 2019-12-31_14-54-49
 ```
