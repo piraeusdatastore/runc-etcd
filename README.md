@@ -1,6 +1,6 @@
 # Etcd by RunC
 
-## ToDo
+## TODOs
 * add etcd TLS
 * use gojq
 * multiple deployments on the same node
