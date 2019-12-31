@@ -1,8 +1,8 @@
 # Etcd by RunC
 
 ## ToDo
-* add etcd backup
 * add etcd TLS
+* use gojq
 
 ## Overview
 
