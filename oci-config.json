@@ -162,12 +162,12 @@
             "type": "bind"
         },
         {
-            "destination": "/.etcd/data",
+            "destination": "/.runc-etcd",
             "options": [
                     "rbind",
                     "rprivate"
             ],
-            "source": "_ETCD_DATA_DIR_/data",
+            "source": "_ETCD_DATA_DIR_",
                    "type": "bind"
         }
     ],

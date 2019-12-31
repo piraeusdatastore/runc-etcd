@@ -28,26 +28,29 @@ systemd service => runc binary => etcd in container
 ## Options
 ```
 NAME:
-  runc-etcd/runc-etcd.sh - A script to maintain etcd cluster
+  etcd-mac/runc-etcd.sh - A script to maintain etcd cluster
 
 WARNING:
   1. Only use this script after consulting Piraeus team
   2. Production requires a 3 or 5 nodes etcd cluster
+  3. Backup/restore only works for v3 keys
 
 LICENSE:
     Apache 2.0
 
 USAGE:
-  bash runc-etcd/runc-etcd.sh [flags] [ACTION]
-  bash runc-etcd/runc-etcd.sh [ACTION] [flags]
+  bash etcd-mac/runc-etcd.sh [flags] [ACTION]
+  bash etcd-mac/runc-etcd.sh [ACTION] [flags]
 
 ACTION:
-   create   -[rtiecp]   Create a single-node etcd cluster from the local node
-   join     -[rtiecp]   Join the local node to an existing etcd cluster
-   remove   -[yf]       Remove the local node from the etcd cluster DANGEROUS!
+   create   -[rtiecp]   Create a single-node cluster from the local node
+   join     -[rtiecp]   Join the local node to an existing cluster
+   remove   -[yf]       Remove the local node from the cluster DANGEROUS!
    status               Check cluster health
    getconf              Display configuration
    upgrade  -[rt]       Upgrade the local node
+   backup   -[f]        Backup conf and keys (v3 only!)
+   restore  -[syf]      Restore node with v3 snapshot
    del_keys -[ak]       Delete keys under a key prefix in API 3 DANGEROUS!
    hide_init_cluster    Hide "initial-cluster" from config
 
@@ -57,6 +60,7 @@ flags:
   -i,--ip:  IP (default: '')
   -e,--peer_port:  Peer point (default: '13378')
   -c,--client_port:  Client point (default: '13379')
+  -s,--snapshot:  Snapshot dir (default: '')
   -k,--key:  Key (default: '')
   -a,--all:  All (default: false)
   -p,--pull:  Enforce pull image (default: false)
@@ -92,7 +96,7 @@ runc-etcd.sh
 
 ### Initiate cluster by creating first node
 ```
-$ runc-etcd/runc-etcd.sh create -i 192.168.176.151
+runc-etcd.sh create -i 192.168.176.151
 ```
 <details>
   <summary>output example</summary>
@@ -171,7 +175,7 @@ Expand cluster:   /root/etcd-mac/runc-etcd.sh join -i 192.168.176.151
 
 ### Expand cluster by joining other nodes 
 ```
-$ runc-etcd/runc-etcd.sh join -i 192.168.176.151
+runc-etcd.sh join -i 192.168.176.151
 ```
 <details>
   <summary>output example</summary>
@@ -257,7 +261,7 @@ etcd://192.168.176.152:13379,192.168.176.151:13379
 
 ### Remove a node from cluster
 ```
-$ runc-etcd/runc-etcd.sh remove
+runc-etcd.sh remove
 ```
 <details>
   <summary>output example</summary>
@@ -284,12 +288,12 @@ removed directory: ‘/var/local/runc-etcd’
 
 ### Check configuration
 ```
-$ runc-etcd/runc-etcd.sh getconf
+runc-etcd.sh getconf
 ```
 <details>
   <summary>output example</summary>
 <pre>
-Env:
+ENV:
 PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
 TERM=xterm
 GOMAXPROCS=8
@@ -326,7 +330,7 @@ Data dir:
 
 ### Check cluster status
 ```
-$ runc-etcd/runc-etcd.sh status
+runc-etcd.sh status
 ```
 <details>
   <summary>output example</summary>
@@ -349,7 +353,7 @@ etcd://192.168.176.152:13379,192.168.176.153:13379,192.168.176.151:13379
 
 ### Upgrade node
 ```
-$  runc-etcd/runc-etcd.sh upgrade -t v3.4.1
+$  runc-etcd.sh upgrade -t v3.4.1
 ```
 <details>
   <summary>output example</summary>
@@ -387,5 +391,101 @@ cluster is healthy
 For copy & paste:
 etcd:http://192.168.176.153:13379,etcd:http://192.168.176.151:13379
 etcd://192.168.176.153:13379,192.168.176.151:13379
+</pre>
+</details>
+
+
+### Backup
+
+Backup only works for v3 keys.  
+```
+runc-etcd.sh restore -s 2019-12-31_14-54-49
+```
+<details>
+  <summary>output example</summary>
+<pre>
+Copy config and data
+mkdir: created directory ‘/var/local/runc-etcd_backup’
+mkdir: created directory ‘/var/local/runc-etcd_backup/2019-12-31_12-02-21’
+‘/opt/runc-etcd/oci/rootfs/etcd.conf.yml’ -> ‘/var/local/runc-etcd_backup/2019-12-31_12-02-21/etcd.conf.yml’
+‘/opt/runc-etcd/oci/config.json’ -> ‘/var/local/runc-etcd_backup/2019-12-31_12-02-21/config.json’
+‘/var/local/runc-etcd/data’ -> ‘/var/local/runc-etcd_backup/2019-12-31_12-02-21/data’
+‘/var/local/runc-etcd/data/member’ -> ‘/var/local/runc-etcd_backup/2019-12-31_12-02-21/data/member’
+‘/var/local/runc-etcd/data/member/snap’ -> ‘/var/local/runc-etcd_backup/2019-12-31_12-02-21/data/member/snap’
+‘/var/local/runc-etcd/data/member/snap/db’ -> ‘/var/local/runc-etcd_backup/2019-12-31_12-02-21/data/member/snap/db’
+‘/var/local/runc-etcd/data/member/wal’ -> ‘/var/local/runc-etcd_backup/2019-12-31_12-02-21/data/member/wal’
+‘/var/local/runc-etcd/data/member/wal/0000000000000000-0000000000000000.wal’ -> ‘/var/local/runc-etcd_backup/2019-12-31_12-02-21/data/member/wal/0000000000000000-0000000000000000.wal’
+‘/var/local/runc-etcd/data/member/wal/0.tmp’ -> ‘/var/local/runc-etcd_backup/2019-12-31_12-02-21/data/member/wal/0.tmp’
+Take a snapshot
+{"level":"info","ts":1577764942.011904,"caller":"snapshot/v3_snapshot.go:109","msg":"created temporary db file","path":"/.etcd/data/snapshot.db.part"}
+{"level":"warn","ts":"2019-12-31T12:02:22.015+0800","caller":"clientv3/retry_interceptor.go:116","msg":"retry stream intercept"}
+{"level":"info","ts":1577764942.015422,"caller":"snapshot/v3_snapshot.go:120","msg":"fetching snapshot","endpoint":"http://192.168.176.151:13379"}
+{"level":"info","ts":1577764942.0175996,"caller":"snapshot/v3_snapshot.go:133","msg":"fetched snapshot","endpoint":"http://192.168.176.151:13379","took":0.005585111}
+{"level":"info","ts":1577764942.0176861,"caller":"snapshot/v3_snapshot.go:142","msg":"saved","path":"/.etcd/data/snapshot.db"}
+Snapshot saved at /.etcd/data/snapshot.db
+‘/var/local/runc-etcd/data/snapshot.db’ -> ‘/var/local/runc-etcd_backup/2019-12-31_12-02-21/snapshot.db’
+Backed up at /var/local/runc-etcd_backup/2019-12-31_12-02-21:
+total 36K
+-rwxr-xr-x 1 root root 5.1K Dec 31 12:02 config.json
+drwxr-xr-x 3 root root   20 Dec 31 12:02 data
+-rw-r--r-- 1 root root  631 Dec 31 12:02 etcd.conf.yml
+-rw------- 1 root root  21K Dec 31 12:02 snapshot.db
+</pre>
+</details>
+
+###restore
+
+Restore only works for v3 keys. It will backup
+```
+runc-etcd.sh restore -s 2019-12-31_14-54-49
+```
+<details>
+  <summary>output example</summary>
+<pre>
+ATTENSION: Restore will overwrite existing keys, and restart service!
+Continue (yes/no)? yes
+Yes, continue
+Copy config and data
+mkdir: created directory ‘/var/local/runc-etcd_backup/2019-12-31_15-24-29’
+‘/opt/runc-etcd/oci/rootfs/etcd.conf.yml’ -> ‘/var/local/runc-etcd_backup/2019-12-31_15-24-29/etcd.conf.yml’
+‘/opt/runc-etcd/oci/config.json’ -> ‘/var/local/runc-etcd_backup/2019-12-31_15-24-29/config.json’
+‘/var/local/runc-etcd/data’ -> ‘/var/local/runc-etcd_backup/2019-12-31_15-24-29/data’
+‘/var/local/runc-etcd/data/member’ -> ‘/var/local/runc-etcd_backup/2019-12-31_15-24-29/data/member’
+‘/var/local/runc-etcd/data/member/snap’ -> ‘/var/local/runc-etcd_backup/2019-12-31_15-24-29/data/member/snap’
+‘/var/local/runc-etcd/data/member/snap/db’ -> ‘/var/local/runc-etcd_backup/2019-12-31_15-24-29/data/member/snap/db’
+‘/var/local/runc-etcd/data/member/snap/0000000000000001-0000000000000001.snap’ -> ‘/var/local/runc-etcd_backup/2019-12-31_15-24-29/data/member/snap/0000000000000001-0000000000000001.snap’
+‘/var/local/runc-etcd/data/member/wal’ -> ‘/var/local/runc-etcd_backup/2019-12-31_15-24-29/data/member/wal’
+‘/var/local/runc-etcd/data/member/wal/0000000000000000-0000000000000000.wal’ -> ‘/var/local/runc-etcd_backup/2019-12-31_15-24-29/data/member/wal/0000000000000000-0000000000000000.wal’
+‘/var/local/runc-etcd/data/member/wal/0.tmp’ -> ‘/var/local/runc-etcd_backup/2019-12-31_15-24-29/data/member/wal/0.tmp’
+Take a v3 snapshot
+Snapshot saved at /.runc-etcd/snapshot.db
+‘/var/local/runc-etcd/snapshot.db’ -> ‘/var/local/runc-etcd_backup/2019-12-31_15-24-29/snapshot.db’
+Backed up at /var/local/runc-etcd_backup/2019-12-31_15-24-29:
+total 36K
+-rwxr-xr-x 1 root root 5.1K Dec 31 15:24 config.json
+drwx------ 3 root root   20 Dec 31 15:24 data
+-rw-r--r-- 1 root root  636 Dec 31 15:24 etcd.conf.yml
+-rw-r--r-- 1 root root  21K Dec 31 15:24 snapshot.db
+Restore from snapshot: /var/local/runc-etcd_backup/2019-12-31_14-54-49/snapshot.db
+‘/var/local/runc-etcd_backup/2019-12-31_14-54-49/snapshot.db’ -> ‘/var/local/runc-etcd/snapshot.db’
+2019-12-31 15:24:31.165540 I | etcdserver/membership: added member 806c9900ca835e67 [http://192.168.176.151:13378] to cluster b06c335473e28be2
+‘/var/local/runc-etcd/data.restored’ -> ‘/var/local/runc-etcd/data’
+Start runc-etcd.service
+   Loaded: loaded (/etc/systemd/system/runc-etcd.service; enabled; vendor preset: disabled)
+   Active: active (running) since Tue 2019-12-31 15:24:31 CST; 5s ago
+Check cluster health
+etcdctl version: 3.3.8
+API version: 2
+member 806c9900ca835e67 is healthy: got healthy result from http://192.168.176.151:13379
+cluster is healthy
+806c9900ca835e67: name=k8s-master-1 peerURLs=http://192.168.176.151:13378 clientURLs=http://192.168.176.151:13379 isLeader=true
+For copy & paste:
+etcd:http://192.168.176.151:13379
+etcd://192.168.176.151:13379
+Command reference
+Watch log:        journalctl -fu runc-etcd
+Watch container:  /opt/runc-etcd/bin/runc list
+Check health:     /opt/runc-etcd/bin/runc exec runc-etcd etcdctl cluster-health
+Expand cluster:   /root/etcd-mac/runc-etcd.sh join -i 192.168.176.151
 </pre>
 </details>
