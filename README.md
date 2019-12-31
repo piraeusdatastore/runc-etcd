@@ -29,7 +29,7 @@ systemd service => runc binary => etcd in container
 ## Options
 ```
 NAME:
-  runc-etcd/runc-etcd.sh - A script to maintain etcd cluster
+  runc-etcd.sh - A script to maintain etcd cluster
 
 WARNING:
   1. Only use this script after consulting Piraeus team
@@ -40,8 +40,8 @@ LICENSE:
   Apache 2.0
 
 USAGE:
-  runc-etcd/runc-etcd.sh [flags] [ACTION]
-  runc-etcd/runc-etcd.sh [ACTION] [flags]
+  ./runc-etcd.sh [flags] [ACTION]
+  ./runc-etcd.sh [ACTION] [flags]
 
 ACTION:
    create   -[rtiecp]   Create a single-node cluster from the local node
@@ -91,13 +91,13 @@ oci-config.json
 README.md
 runc
 runc-etcd.service
-runc-etcd.sh
+./runc-etcd.sh
 </pre>
 </details>
 
 ### Initiate cluster by creating first node
 ```
-runc-etcd.sh create -i 192.168.176.151
+./runc-etcd.sh create -i 192.168.176.151
 ```
 <details>
   <summary>output example</summary>
@@ -169,14 +169,14 @@ Command reference
 Watch log:        journalctl -fu runc-etcd
 Watch container:  /opt/runc-etcd/bin/runc list
 Check health:     /opt/runc-etcd/bin/runc exec runc-etcd etcdctl cluster-health
-Expand cluster:   /root/runc-etcd/runc-etcd.sh join -i 192.168.176.151
+Expand cluster:   /root/runc-etcd/./runc-etcd.sh join -i 192.168.176.151
 </pre>
 </details>
 
 
 ### Expand cluster by joining other nodes 
 ```
-runc-etcd.sh join -i 192.168.176.151
+./runc-etcd.sh join -i 192.168.176.151
 ```
 <details>
   <summary>output example</summary>
@@ -262,7 +262,7 @@ etcd://192.168.176.152:13379,192.168.176.151:13379
 
 ### Remove a node from cluster
 ```
-runc-etcd.sh remove
+./runc-etcd.sh remove
 ```
 <details>
   <summary>output example</summary>
@@ -289,7 +289,7 @@ removed directory: ‘/var/local/runc-etcd’
 
 ### Check configuration
 ```
-runc-etcd.sh getconf
+./runc-etcd.sh getconf
 ```
 <details>
   <summary>output example</summary>
@@ -331,7 +331,7 @@ Data dir:
 
 ### Check cluster status
 ```
-runc-etcd.sh status
+./runc-etcd.sh status
 ```
 <details>
   <summary>output example</summary>
@@ -354,7 +354,7 @@ etcd://192.168.176.152:13379,192.168.176.153:13379,192.168.176.151:13379
 
 ### Upgrade node
 ```
-runc-etcd.sh upgrade -t v3.4.1
+./runc-etcd.sh upgrade -t v3.4.1
 ```
 <details>
   <summary>output example</summary>
@@ -400,7 +400,7 @@ etcd://192.168.176.153:13379,192.168.176.151:13379
 
 Backup only works for v3 keys.  
 ```
-runc-etcd.sh restore -s 2019-12-31_14-54-49
+./runc-etcd.sh restore -s 2019-12-31_14-54-49
 ```
 <details>
   <summary>output example</summary>
@@ -438,7 +438,7 @@ drwxr-xr-x 3 root root   20 Dec 31 12:02 data
 
 Restore only works for v3 keys. It will do another backup before applying the restore target. 
 ```
-runc-etcd.sh restore -s 2019-12-31_14-54-49
+./runc-etcd.sh restore -s 2019-12-31_14-54-49
 ```
 <details>
   <summary>output example</summary>
@@ -474,19 +474,5 @@ Restore from snapshot: /var/local/runc-etcd_backup/2019-12-31_14-54-49/snapshot.
 Start runc-etcd.service
    Loaded: loaded (/etc/systemd/system/runc-etcd.service; enabled; vendor preset: disabled)
    Active: active (running) since Tue 2019-12-31 15:24:31 CST; 5s ago
-Check cluster health
-etcdctl version: 3.3.8
-API version: 2
-member 806c9900ca835e67 is healthy: got healthy result from http://192.168.176.151:13379
-cluster is healthy
-806c9900ca835e67: name=k8s-master-1 peerURLs=http://192.168.176.151:13378 clientURLs=http://192.168.176.151:13379 isLeader=true
-For copy & paste:
-etcd:http://192.168.176.151:13379
-etcd://192.168.176.151:13379
-Command reference
-Watch log:        journalctl -fu runc-etcd
-Watch container:  /opt/runc-etcd/bin/runc list
-Check health:     /opt/runc-etcd/bin/runc exec runc-etcd etcdctl cluster-health
-Expand cluster:   /root/runc-etcd/runc-etcd.sh join -i 192.168.176.151
 </pre>
 </details>

@@ -38,7 +38,7 @@ DEFINE_boolean 'debug' false 'Enable debug output' 'x'
 
 FLAGS_HELP=$( cat <<EOF
 NAME:
-  $0 - A script to maintain etcd cluster
+  runc-etcd.sh - A script to maintain etcd cluster
 
 $( clr_brown WARNING ):
   1. Only use this script after consulting Piraeus team
@@ -49,8 +49,8 @@ LICENSE:
     Apache 2.0
 
 USAGE:
-  bash $0 [flags] [ACTION]
-  bash $0 [ACTION] [flags]
+  ./runc-etcd.sh [flags] [ACTION]
+  ./runc-etcd.sh [ACTION] [flags]
 
 ACTION:
    create   -[rtiecp]   Create a single-node cluster from the local node
@@ -287,7 +287,7 @@ _status() {
     echo "$( clr_brown 'Watch container:' )  /opt/runc-etcd/bin/runc list"
     echo "$( clr_brown 'Check health:' )     /opt/runc-etcd/bin/runc exec runc-etcd etcdctl cluster-health"
     HOST_IP=$( awk -F: '/listen-client-urls/{print $3}' ${ROOTFS_DIR}/etcd.conf.yml | sed 's#/##g' )
-    echo "$( clr_brown 'Expand cluster:' )   ${SCRIPT_DIR}/runc-etcd.sh join -i ${HOST_IP}"
+    echo "$( clr_brown 'Expand cluster:' )   ${SCRIPT_DIR}/./runc-etcd.sh join -i ${HOST_IP}"
 }
 
 _backup() {
