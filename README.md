@@ -37,11 +37,11 @@ WARNING:
   3. Backup/restore only works for v3 keys
 
 LICENSE:
-    Apache 2.0
+  Apache 2.0
 
 USAGE:
-  bash runc-etcd/runc-etcd.sh [flags] [ACTION]
-  bash runc-etcd/runc-etcd.sh [ACTION] [flags]
+  runc-etcd/runc-etcd.sh [flags] [ACTION]
+  runc-etcd/runc-etcd.sh [ACTION] [flags]
 
 ACTION:
    create   -[rtiecp]   Create a single-node cluster from the local node
