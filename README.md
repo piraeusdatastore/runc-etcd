@@ -3,7 +3,6 @@
 ## TODOs
 * add etcd TLS
 * use gojq
-* multiple deployments on the same node
 
 ## Overview
 
@@ -28,6 +27,7 @@ systemd service => runc binary => etcd in container
 
 ## Options
 ```
+[root@k8s-master-1 etcd-mac]# ./runc-etcd.sh -h
 NAME:
   runc-etcd.sh - A script to maintain etcd cluster
 
@@ -37,25 +37,26 @@ WARNING:
   3. Backup/restore only works for v3 keys
 
 LICENSE:
-  Apache 2.0
+    Apache 2.0
 
 USAGE:
-  ./runc-etcd.sh [flags] [ACTION]
-  ./runc-etcd.sh [ACTION] [flags]
+  runc-etcd.sh [flags] [ACTION]
+  runc-etcd.sh [ACTION] [flags]
 
 ACTION:
-   create   -[rtiecp]   Create a single-node cluster from the local node
-   join     -[rtiecp]   Join the local node to an existing cluster
-   remove   -[yf]       Remove the local node from the cluster DANGEROUS!
-   status               Check cluster health
-   getconf              Display configuration
-   upgrade  -[rt]       Upgrade the local node
-   backup   -[f]        Backup conf and keys (v3 only!)
-   restore  -[syf]      Restore node with v3 snapshot
-   del_keys -[ak]       Delete keys under a key prefix in API 3 DANGEROUS!
-   hide_init_cluster    Hide "initial-cluster" from config
+   create    -[prtiecl] Create a single-node cluster from the local node
+   join      -[prtiecl] Join the local node to an existing cluster
+   remove    -[pyf]     Remove the local node from the cluster DANGEROUS!
+   status    -[p]       Check cluster health
+   getconf   -[p]       Display configuration
+   upgrade   -[prt]     Upgrade the local node
+   backup    -[pf]      Backup conf and keys (v3 only!)
+   restore   -[psyf]    Restore node with v3 snapshot
+   del_keys  -[pak]     Delete keys under a key prefix in API 3 DANGEROUS!
+   hide_init -[p]       Hide "initial-cluster" from config
 
 flags:
+  -p,--prefix:  Service name prefix: xxxx-etcd (default: 'runc')
   -r,--registry:  Docker registry address (default: 'quay.io/coreos')
   -t,--tag:  Image tag (default: 'latest')
   -i,--ip:  IP (default: '')
@@ -64,10 +65,10 @@ flags:
   -s,--snapshot:  Snapshot dir (default: '')
   -k,--key:  Key (default: '')
   -a,--all:  All (default: false)
-  -p,--pull:  Enforce pull image (default: false)
+  -l,--pull:  Enforce pull image (default: false)
   -y,--yes:  Answer yes to confirm (default: false)
   -f,--force:  Force (default: false)
-  -d,--hide_init_cluster:  Hide INIT_CLUSTER= from env (default: false)
+  -d,--hide_init:  Hide INIT_CLUSTER from config (default: false)
   -x,--debug:  Enable debug output (default: false)
   -h,--help:  show this help (default: false)
 ```
