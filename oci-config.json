@@ -162,7 +162,7 @@
             "type": "bind"
         },
         {
-            "destination": "/.runc-etcd",
+            "destination": "/.etcd",
             "options": [
                     "rbind",
                     "rprivate"
