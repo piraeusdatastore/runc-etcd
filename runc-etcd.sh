@@ -93,6 +93,7 @@ _main() {
     OCI_DIR=${OPT_DIR}/oci
     BIN_DIR=${OPT_DIR}/bin
     ROOTFS_DIR=${OCI_DIR}/rootfs
+    YML_FILE=${ROOTFS_DIR}/${BASE_NAME}.yml
     VAR_DIR=/var/local/${BASE_NAME}
     BACKUP_ROOT_DIR=/var/local/${BASE_NAME}_backup
     BACKUP_DIR=${BACKUP_ROOT_DIR}/${TIMESTAMP}
@@ -290,14 +291,14 @@ _status() {
     echo "$( clr_brown 'Watch log:' )        journalctl -fu ${BASE_NAME}"
     echo "$( clr_brown 'Watch container:' )  ${BIN_DIR}/runc list"
     echo "$( clr_brown 'Check health:' )     ${BIN_DIR}/runc exec ${BASE_NAME} etcdctl cluster-health"
-    HOST_IP=$( awk -F: '/listen-client-urls/{print $3}' ${ROOTFS_DIR}/etcd.conf.yml | sed 's#/##g' )
+    HOST_IP=$( awk -F: '/listen-client-urls/{print $3}' ${YML_FILE} | sed 's#/##g' )
     echo "$( clr_brown 'Expand cluster:' )   ${SCRIPT_DIR}/./${BASE_NAME}.sh join -i ${HOST_IP}"
 }
 
 _backup() {
     clr_green "Copy config and data"
     mkdir -vp ${BACKUP_DIR}
-    cp -vf ${ROOTFS_DIR}/etcd.conf.yml ${BACKUP_DIR}/ || true
+    cp -vf ${YML_FILE} ${BACKUP_DIR}/ || true
     cp -vf ${OCI_DIR}/config.json ${BACKUP_DIR}/ || true
     cp -vfr ${VAR_DIR}/data ${BACKUP_DIR}/ || true  
     
@@ -350,10 +351,10 @@ _restore() {
     rm -vfr ${VAR_DIR}/data.restored
     __etcdctl3 snapshot restore /.etcd/snapshot.db \
     --data-dir /.etcd/data.restored \
-    --name $( awk '/name:/ {print $2}' ${ROOTFS_DIR}/etcd.conf.yml ) \
-    --initial-cluster $( awk '/initial-cluster:/ {print $2}' ${ROOTFS_DIR}/etcd.conf.yml ) \
-    --initial-cluster-token $( awk '/initial-cluster-token:/ {print $2}' ${ROOTFS_DIR}/etcd.conf.yml ) \
-    --initial-advertise-peer-urls $( awk '/initial-advertise-peer-urls:/ {print $2}' ${ROOTFS_DIR}/etcd.conf.yml ) \
+    --name $( awk '/name:/ {print $2}' ${YML_FILE} ) \
+    --initial-cluster $( awk '/initial-cluster:/ {print $2}' ${YML_FILE} ) \
+    --initial-cluster-token $( awk '/initial-cluster-token:/ {print $2}' ${YML_FILE} ) \
+    --initial-advertise-peer-urls $( awk '/initial-advertise-peer-urls:/ {print $2}' ${YML_FILE} ) \
 
     systemctl stop ${BASE_NAME}
     rm -fr ${VAR_DIR}/data 
@@ -369,7 +370,7 @@ _getconf() {
     ${BIN_DIR}/runc exec -e ETCDCTL_API=2 ${BASE_NAME} printenv
 
     clr_green "Config file:"
-    cat ${ROOTFS_DIR}/etcd.conf.yml
+    cat ${YML_FILE}
 
     clr_green "Data dir:"
     grep -A7 -B1 '"destination": "/.etcd",' ${OCI_DIR}/config.json
@@ -384,11 +385,11 @@ _install() {
     chmod +x -R ${BIN_DIR}/
     cp -vf ${SCRIPT_DIR}/oci-config.json ${OCI_DIR}/config.json
     cp -vf ${SCRIPT_DIR}/runc-etcd.service /etc/systemd/system/${BASE_NAME}.service
-    sed -i "s/runc-etcd/${BASE_NAME}/g" /etc/systemd/system/${BASE_NAME}.service
+    sed -i "s/runc-etcd/${BASE_NAME}/g" ${OCI_DIR}/config.json /etc/systemd/system/${BASE_NAME}.service
 
     # Generate etcd config-file
     clr_green "Set etcd config file"
-    cat > ${ROOTFS_DIR}/etcd.conf.yml <<EOF
+    cat > ${YML_FILE} <<EOF
 name:                        ${NODE_NAME}
 max-txn-ops:                 1024
 data-dir:                    /.etcd/data
@@ -404,7 +405,7 @@ quota-backend-bytes:         $(( 8 * 1024 ** 3))
 snapshot-count:              5000
 enable-v2:                   true
 EOF
-    cat ${ROOTFS_DIR}/etcd.conf.yml
+    cat ${YML_FILE}
 
     # Verify config.json
     clr_green "Set OCI args"
@@ -449,8 +450,8 @@ _start_service() {
 
 _hide_init() {
     clr_brown "WARN: Remove initial_cluster environmental variables" 
-    sed -i '/initial-cluster:/d' ${ROOTFS_DIR}/etcd.conf.yml
-    sed -i 's/initial-cluster-state:       new/initial-cluster-state:       existing/' ${ROOTFS_DIR}/etcd.conf.yml
+    sed -i '/initial-cluster:/d' ${YML_FILE}
+    sed -i 's/initial-cluster-state:       new/initial-cluster-state:       existing/' ${YML_FILE}
 
     _getconf
 
