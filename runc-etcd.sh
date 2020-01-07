@@ -266,8 +266,8 @@ _upgrade() {
     
     _extract_rootfs
 
-    clr_green "Copy etcd.conf.yml"
-    cp -vf ${ROOTFS_DIR}_${TIMESTAMP}/etcd.conf.yml ${ROOTFS_DIR}/
+    clr_green "Copy ${BASE_NAME}.yml"
+    cp -vf ${ROOTFS_DIR}_${TIMESTAMP}/${BASE_NAME}.yml ${ROOTFS_DIR}/
 
     _start_service
     
