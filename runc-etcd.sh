@@ -5,13 +5,13 @@
 #######################################################
 
 # Must run in the script directoy 
-WORK_DIR="$( pwd )"
-SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null && pwd )"
-TIMESTAMP=$( date +%Y-%m-%d_%H-%M-%S )
+work_dir="$( pwd )"
+script_dir="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null && pwd )"
+timestamp="$( date +%Y-%m-%d_%H-%M-%S )"
 
-source ${SCRIPT_DIR}/lib/bash_colors.sh
-source ${SCRIPT_DIR}/lib/confirm.sh
-source ${SCRIPT_DIR}/lib/shflags.sh 
+source "${script_dir}/lib/bash_colors.sh"
+source "${script_dir}/lib/confirm.sh"
+source "${script_dir}/lib/shflags.sh"
 
 DEFINE_string 'prefix' 'runc' 'Service name prefix: xxxx-etcd' 'p'
 DEFINE_string 'registry' 'quay.io/coreos' 'Docker registry address' 'r'
@@ -59,47 +59,47 @@ EOF
 )  
 
 # Default parameters
-: ${IMAGE:=etcd}
-: ${NODE_NAME:=${HOSTNAME}}
+: "${image:=etcd}"
+: "${node_name:="$HOSTNAME"}"
 
 # Parse cmdline arguments
 _main() {
     # Parse args
-    if [ $# -eq 0 ]; then
+    if [ "$#" -eq 0 ]; then
         clr_red "ERROR: Missing action."
         flags_help
         exit 1
-    elif [ $# -gt 1 ]; then
+    elif [ "$#" -gt 1 ]; then
         clr_red "ERROR: Only one action is allowed."
         flags_help
         exit 1
     fi
-    ACTION=$1 
-    UPGRADE=false
+    action="$1" 
+    upgrade=false
 
     # Parse flags
-    [ ${FLAGS_debug} -eq ${FLAGS_TRUE} ] && set -x
+    [ "$FLAGS_debug" -eq "$FLAGS_TRUE" ] && set -x
 
-    if [ -z "${FLAGS_registry}" ]; then
-        IMAGE_ADDR=${IMAGE}:${FLAGS_tag}
+    if [ -z "$FLAGS_registry" ]; then
+        image_addr="${image}:${FLAGS_tag}"
     else
-        IMAGE_ADDR=${FLAGS_registry}/${IMAGE}:${FLAGS_tag}
+        image_addr="${FLAGS_registry}/${image}:${FLAGS_tag}"
     fi     
-    PEER_PORT=${FLAGS_peer_port}
-    CLIENT_PORT=${FLAGS_client_port}
+    peer_port="$FLAGS_peer_port"
+    client_port="$FLAGS_client_port"
 
-    BASE_NAME=${FLAGS_prefix}-etcd
-    OPT_DIR=/opt/${BASE_NAME}
-    OCI_DIR=${OPT_DIR}/oci
-    BIN_DIR=${OPT_DIR}/bin
-    ROOTFS_DIR=${OCI_DIR}/rootfs
-    YML_FILE=${ROOTFS_DIR}/${BASE_NAME}.yml
-    VAR_DIR=/var/local/${BASE_NAME}
-    BACKUP_ROOT_DIR=/var/local/${BASE_NAME}_backup
-    BACKUP_DIR=${BACKUP_ROOT_DIR}/${TIMESTAMP}
+    base_name="${FLAGS_prefix}-etcd"
+    opt_dir="/opt/${base_name}"
+    oci_dir="${opt_dir}/oci"
+    bin_dir="${opt_dir}/bin"
+    rootfs_dir="${oci_dir}/rootfs"
+    yml_file="${rootfs_dir}/${base_name}.yml"
+    var_dir="/var/local/${base_name}"
+    backup_root_dir="/var/local/${base_name}_backup"
+    backup_dir="${backup_root_dir}/${timestamp}"
 
     # Parse actions 
-    case ${ACTION} in
+    case "$action" in
         create     )        _create     ;;
         join       )        _join       ;;
         remove     )        _remove     ;;
@@ -120,25 +120,25 @@ _main() {
 
 _etcdctl2() {
     # etcdctl v2 outside container
-    ETCDCTL_API=2 ${ROOTFS_DIR}/usr/local/bin/etcdctl $@
+    ETCDCTL_API=2 "${rootfs_dir}/usr/local/bin/etcdctl" "$@"
 }
 
 __etcdctl2() {
     # etcdctl v2 inside container
-    ${BIN_DIR}/runc exec -e ETCDCTL_API=2 ${BASE_NAME} etcdctl $@
+    "${bin_dir}/runc" exec -e ETCDCTL_API=2 "$base_name" etcdctl "$@"
 }
 
 __etcdctl3() {
     # etcdctl v3 inside container
-    ${BIN_DIR}/runc exec -e ETCDCTL_API=3 ${BASE_NAME} etcdctl $@
+    "${bin_dir}/runc" exec -e ETCDCTL_API=3 "$base_name" etcdctl "$@"
 }
 
 _create() { 
-    [ -z ${FLAGS_ip} ] && clr_red "ERROR: Must provide an IP or Hostname by --ip" && exit 1
+    [ -z "${FLAGS_ip}" ] && clr_red "ERROR: Must provide an IP or Hostname by --ip" && exit 1
 
     # Check if IP is present on the local node 
     if ip a | grep -q "inet ${FLAGS_ip}\/"; then
-        HOST_IP=${FLAGS_ip}
+        host_ip="$FLAGS_ip"
     else
         clr_red "ERROR: ${FLAGS_ip} is not present on this host"
         exit 1
@@ -146,9 +146,9 @@ _create() {
     
     # Create cluster
     clr_green "Create etcd cluster"
-    echo New node: http://${HOST_IP}:${CLIENT_PORT}
-    EXISTING_CLUSTER=""
-    CLUSTER_STATE=new
+    echo New node: "http://${host_ip}:${client_port}"
+    existing_cluster=""
+    cluster_state=new
 
     _extract_rootfs
 
@@ -156,51 +156,51 @@ _create() {
 }
 
 _join() {
-    [ -z ${FLAGS_ip} ] && clr_red "ERROR: Must provide an IP or Hostname --ip" && exit 1
+    [ -z "$FLAGS_ip" ] && clr_red "ERROR: Must provide an IP or Hostname --ip" && exit 1
 
-    REMOTE_IP=${FLAGS_ip}
-    REMOTE_PORT=${CLIENT_PORT}
+    remote_ip="$FLAGS_ip"
+    remote_port="$client_port"
 
-    REMOTE_API=http://${REMOTE_IP}:${REMOTE_PORT}
-    export ETCDCTL_ENDPOINTS=${REMOTE_API}
+    remote_api="http://${remote_ip}:${remote_port}"
+    export ETCDCTL_ENDPOINTS="$remote_api"
 
     _extract_rootfs
 
-    clr_green "Check ${REMOTE_API}/health"
+    clr_green "Check ${remote_api}/health"
     # Check remote IP and find local IP
     if _etcdctl2 cluster-health; then 
         clr_green "Check member list"
-        HOST_IP=$( ip route get ${REMOTE_IP} | sed 's# #\n#g' | awk '/src/ {getline; print}' )  
-        if [[ "${HOST_IP}" == "${REMOTE_IP}" ]]; then
-            clr_red "ERROR: ${REMOTE_IP} should not be local"
+        host_ip="$( ip route get "$remote_ip" | sed 's# #\n#g' | awk '/src/ {getline; print}' )"
+        if [[ "$host_ip" == "$remote_ip" ]]; then
+            clr_red "ERROR: $remote_ip should not be local"
             exit 1
         fi
     else
-        clr_red "ERROR: etcd:${REMOTE_API} is either unreachable or in degraded state."  
+        clr_red "ERROR: etcd:${remote_api} is either unreachable or in degraded state."  
         exit 1  
     fi     
 
     # Check the local IP is already registered   
-    if _etcdctl2 member list | grep "clientURLs=.*${HOST_IP}"; then
+    if _etcdctl2 member list | grep "clientURLs=.*${host_ip}"; then
         clr_red "ERROR: This host is already registered to the cluster"
         exit 1
     elif _etcdctl2 member list | grep -w "name=${HOSTNAME}"; then
-        NODE_NAME="${HOSTNAME}@${HOST_IP}"
-        clr_brown "WARN: Duplicated hostname: ${HOSTNAME}? Use ${NODE_NAME}"
+        node_name="${HOSTNAME}@${host_ip}"
+        clr_brown "WARN: Duplicated hostname: ${HOSTNAME}? Use ${node_name}"
     fi
 
     # Add cluster member
     clr_green "Join etcd cluster"
-    echo New node: http://${HOST_IP}:${CLIENT_PORT}
-    EXISTING_CLUSTER=$( _etcdctl2 member list | awk '/name=/ {print $2"="$3}' | sed 's/name=//; s/peerURLs=//' | tr '\n' ',' )
-    CLUSTER_STATE=existing
+    echo New node: "http://${host_ip}:${client_port}"
+    existing_cluster=$( _etcdctl2 member list | awk '/name=/ {print $2"="$3}' | sed 's/name=//; s/peerURLs=//' | tr '\n' ',' )
+    cluster_state=existing
 
     # Register new member 
-    clr_green "Register node ${HOST_IP} to etcd cluster"
-    if _etcdctl2 member add ${NODE_NAME} http://${HOST_IP}:${PEER_PORT}; then
+    clr_green "Register node $host_ip to etcd cluster"
+    if _etcdctl2 member add "$node_name" "http://${host_ip}:${peer_port}"; then
         echo
     else
-        clr_red "ERROR: Failed to register ${HOST_IP} to the cluster" 
+        clr_red "ERROR: Failed to register ${host_ip} to the cluster" 
         exit 1
     fi
 
@@ -210,28 +210,28 @@ _join() {
 _remove() {
     clr_red "ATTENTION: Will irreversibly delete all etcd data on this node!"
     
-    confirm ${FLAGS_yes} || exit 1
+    confirm "$FLAGS_yes" || exit 1
 
     # Gracefully check and deregister
-    if [ ${FLAGS_force} -eq ${FLAGS_FALSE} ]; then
-        if ${BIN_DIR}/runc list | grep -qw "${BASE_NAME} .* running"; then 
+    if [ "$FLAGS_force" -eq "$FLAGS_FALSE" ]; then
+        if "$bin_dir/runc" list | grep -qw "$base_name .* running"; then 
             clr_green "Check local member status"
-            LOCAL_MEMBER_SPEC=$( __etcdctl2 member list | grep "clientURLs=${ETCDCTL_ENDPOINTS}" )
-            echo ${LOCAL_MEMBER_SPEC}
-            LOCAL_MEMBER_ID=$( echo ${LOCAL_MEMBER_SPEC} | awk 'BEGIN {FS =":"}{print $1}' )
-            #_etcdctl2 cluster-health | grep ${LOCAL_MEMBER_ID}
+            local_member_spec="$( __etcdctl2 member list | grep "clientURLs=${ETCDCTL_ENDPOINTS}" )"
+            echo "$local_member_spec"
+            local_member_id="$( echo "$local_member_spec" | awk 'BEGIN {FS =":"}{print $1}' )"
+            #_etcdctl2 cluster-health | grep ${local_member_id}
 
             clr_green "Deregister local member from etcd cluster"
-            MEMBER_COUNT=$( __etcdctl2 member list | wc -l )
-            if [[ "${MEMBER_COUNT}" == "1" ]]; then
+            member_count="$( __etcdctl2 member list | wc -l )"
+            if [[ "$member_count" == "1" ]]; then
                 clr_brown "WARN: this is the last member, please use --force"
                 exit 1
             else
                 _backup
-                __etcdctl2 member remove ${LOCAL_MEMBER_ID}
+                __etcdctl2 member remove "$local_member_id"
             fi
         else 
-            clr_brown "WARN: ${BASE_NAME} seems not running on this host, use --force"
+            clr_brown "WARN: $base_name seems not running on this host, use --force"
             exit 1
         fi
     else 
@@ -239,35 +239,35 @@ _remove() {
     fi
 
     # Stop service
-    clr_brown "WARN: Stop and remove ${BASE_NAME}.service"
-    if [ -f /etc/systemd/system/${BASE_NAME}.service ]; then
-        systemctl disable --now ${BASE_NAME} || true
-        rm -vf /etc/systemd/system/${BASE_NAME}.service
+    clr_brown "WARN: Stop and remove ${base_name}.service"
+    if [ -f "/etc/systemd/system/${base_name}.service" ]; then
+        systemctl disable --now "$base_name" || true
+        rm -vf "/etc/systemd/system/${base_name}.service"
         systemctl daemon-reload
     fi
     
     # Remove files
     clr_brown "WARN: Remove files"
-    rm -vfr ${OPT_DIR}/ | tail -1
-    rm -vfr ${VAR_DIR} | tail -1   
+    rm -vfr "$opt_dir" | tail -1
+    rm -vfr "$var_dir" | tail -1   
 }
 
 _upgrade() {
-    UPGRADE=true
+    upgrade=true
     clr_green "Upgrade etcd version to"
-    echo ${IMAGE_ADDR}
+    echo "$image_addr"
 
-    clr_green "Stop ${BASE_NAME}.service"
-    systemctl disable --now ${BASE_NAME}
+    clr_green "Stop ${base_name}.service"
+    systemctl disable --now "$base_name"
 
     clr_green "Backup oci files" 
-    mv -vf ${ROOTFS_DIR} ${ROOTFS_DIR}_${TIMESTAMP}
-    mkdir -vp ${ROOTFS_DIR}
+    mv -vf "$rootfs_dir" "${rootfs_dir}_${timestamp}"
+    mkdir -vp "$rootfs_dir"
     
     _extract_rootfs
 
-    clr_green "Copy ${BASE_NAME}.yml"
-    cp -vf ${ROOTFS_DIR}_${TIMESTAMP}/${BASE_NAME}.yml ${ROOTFS_DIR}/
+    clr_green "Copy ${base_name}.yml"
+    cp -vf "${rootfs_dir}_${timestamp}/${base_name}.yml" "${rootfs_dir}/"
 
     _start_service
     
@@ -288,77 +288,77 @@ _status() {
     __etcdctl2 member list | awk '/name=/ {print $(NF-1)}' | sed 's#clientURLs=.*//##g' | paste -sd "," - | awk '{print "etcd://"$1}'
 
     clr_green "Command reference"
-    echo "$( clr_brown 'Watch log:' )        journalctl -fu ${BASE_NAME}"
-    echo "$( clr_brown 'Watch container:' )  ${BIN_DIR}/runc list"
-    echo "$( clr_brown 'Check health:' )     ${BIN_DIR}/runc exec ${BASE_NAME} etcdctl cluster-health"
-    HOST_IP=$( awk -F: '/listen-client-urls/{print $3}' ${YML_FILE} | sed 's#/##g' )
-    echo "$( clr_brown 'Expand cluster:' )   ${SCRIPT_DIR}/./${BASE_NAME}.sh join -i ${HOST_IP}"
+    echo "$( clr_brown 'Watch log:' )        journalctl -fu ${base_name}"
+    echo "$( clr_brown 'Watch container:' )  ${bin_dir}/runc list"
+    echo "$( clr_brown 'Check health:' )     ${bin_dir}/runc exec ${base_name} etcdctl cluster-health"
+    host_ip="$( awk -F: '/listen-client-urls/{print $3}' "$yml_file" | sed 's#/##g' )"
+    echo "$( clr_brown 'Expand cluster:' )   ./${base_name}.sh join -i ${host_ip}"
 }
 
 _backup() {
     clr_green "Copy config and data"
-    mkdir -vp ${BACKUP_DIR}
-    cp -vf ${YML_FILE} ${BACKUP_DIR}/ || true
-    cp -vf ${OCI_DIR}/config.json ${BACKUP_DIR}/ || true
-    cp -vfr ${VAR_DIR}/data ${BACKUP_DIR}/ || true  
+    mkdir -vp "$backup_dir"
+    cp -vf "$yml_file" "${backup_dir}/" || true
+    cp -vf "${oci_dir}/config.json" "${backup_dir}/" || true
+    cp -vfr "${var_dir}/data" "${backup_dir}/" || true  
     
-    if [ ${FLAGS_force} -eq ${FLAGS_FALSE} ]; then
+    if [ "$FLAGS_force" -eq "$FLAGS_FALSE" ]; then
         clr_green "Take a v3 snapshot"
         __etcdctl3 snapshot save /.etcd/snapshot.db || true
-        mv -vf ${VAR_DIR}/snapshot.db ${BACKUP_DIR}/ || true
+        mv -vf "$var_dir/snapshot.db" "$backup_dir/" || true
 
         # clr_green "Backup v2 (experimental)"
         # __etcdctl2 backup \
         # --data-dir /.etcd/data \
         # --backup-dir /.etcd/v2_backup \
         # --with-v3 || true
-        # mv -vf ${VAR_DIR}/v2_backup ${BACKUP_DIR}/ || true
+        # mv -vf ${var_dir}/v2_backup ${backup_dir}/ || true
     fi
 
 
-    clr_green "Backed up at ${BACKUP_DIR}:"
-    ls -lh ${BACKUP_DIR}
+    clr_green "Backed up at ${backup_dir}:"
+    ls -lh "$backup_dir"
 }
 
 _restore() {
-    if [ -z ${FLAGS_snapshot} ]; then
+    if [ -z "$FLAGS_snapshot" ]; then
         clr_red "ERROR: Must provide a snapshot dir" 
         exit 1
-    elif [[ "${FLAGS_snapshot}" =~ ^/ ]] ; then
-        SNAPSHOT_FILE=${FLAGS_snapshot}
+    elif [[ "$FLAGS_snapshot" =~ ^/ ]] ; then
+        snapshot_file="$FLAGS_snapshot"
     else
-        SNAPSHOT_FILE="${BACKUP_ROOT_DIR}/${FLAGS_snapshot}/snapshot.db"
+        snapshot_file="${backup_root_dir}/${FLAGS_snapshot}/snapshot.db"
     fi
 
-    if [ ! -f ${SNAPSHOT_FILE} ]; then 
-        clr_red "ERROR: Cannot find snapshot: ${SNAPSHOT_FILE}" 
+    if [ ! -f "$snapshot_file" ]; then 
+        clr_red "ERROR: Cannot find snapshot: $snapshot_file" 
         exit 1
     fi
 
     clr_red "ATTENSION: Restore will overwrite existing keys, and restart service!"
-    confirm ${FLAGS_yes} || exit 1
+    confirm "$FLAGS_yes" || exit 1
 
-    MEMBER_COUNT=$( __etcdctl2 member list | wc -l )
-    if [[ "${MEMBER_COUNT}" != "1" ]]; then
+    member_count=$( __etcdctl2 member list | wc -l )
+    if [[ "$member_count" != "1" ]]; then
         clr_red "ATTENSION: Restore requires a single node cluster"
         exit 1
     fi
 
     _backup
 
-    clr_green "Restore from snapshot: ${SNAPSHOT_FILE}"
-    cp -vf ${SNAPSHOT_FILE} ${VAR_DIR}/
-    rm -vfr ${VAR_DIR}/data.restored
+    clr_green "Restore from snapshot: $snapshot_file"
+    cp -vf "$snapshot_file" "${var_dir}/"
+    rm -vfr "${var_dir}/data.restored"
     __etcdctl3 snapshot restore /.etcd/snapshot.db \
     --data-dir /.etcd/data.restored \
-    --name $( awk '/name:/ {print $2}' ${YML_FILE} ) \
-    --initial-cluster $( awk '/initial-cluster:/ {print $2}' ${YML_FILE} ) \
-    --initial-cluster-token $( awk '/initial-cluster-token:/ {print $2}' ${YML_FILE} ) \
-    --initial-advertise-peer-urls $( awk '/initial-advertise-peer-urls:/ {print $2}' ${YML_FILE} ) \
+    --name "$( awk '/name:/ {print $2}' "$yml_file" )" \
+    --initial-cluster "$( awk '/initial-cluster:/ {print $2}' "$yml_file" )" \
+    --initial-cluster-token "$( awk '/initial-cluster-token:/ {print $2}' "$yml_file" )" \
+    --initial-advertise-peer-urls "$( awk '/initial-advertise-peer-urls:/ {print $2}' "$yml_file" )"
 
-    systemctl stop ${BASE_NAME}
-    rm -fr ${VAR_DIR}/data 
-    mv -vf ${VAR_DIR}/data.restored ${VAR_DIR}/data
+    systemctl stop "$base_name"
+    rm -fr "${var_dir}/data"
+    mv -vf "${var_dir}/data.restored" "${var_dir}/data"
 
     _start_service
 
@@ -367,98 +367,100 @@ _restore() {
 
 _getconf() {
     clr_green "ENV:"
-    ${BIN_DIR}/runc exec -e ETCDCTL_API=2 ${BASE_NAME} printenv
+    "$bin_dir/runc" exec -e ETCDCTL_API=2 "$base_name" printenv
 
     clr_green "Config file:"
-    cat ${YML_FILE}
+    cat "$yml_file"
 
     clr_green "Data dir:"
-    grep -A7 -B1 '"destination": "/.etcd",' ${OCI_DIR}/config.json
+    grep -A7 -B1 '"destination": "/.etcd",' "$oci_dir/config.json"
 }
 
 _install() {
     # Copy files
     clr_green "Copy control files"
-    mkdir -vp ${BIN_DIR} 
-    mkdir -vp ${VAR_DIR}
-    cp -vf ${SCRIPT_DIR}/runc ${BIN_DIR}/
-    chmod +x -R ${BIN_DIR}/
-    cp -vf ${SCRIPT_DIR}/oci-config.json ${OCI_DIR}/config.json
-    cp -vf ${SCRIPT_DIR}/runc-etcd.service /etc/systemd/system/${BASE_NAME}.service
-    sed -i "s/runc-etcd/${BASE_NAME}/g" ${OCI_DIR}/config.json /etc/systemd/system/${BASE_NAME}.service
+    mkdir -vp "$bin_dir"
+    mkdir -vp "$var_dir"
+    cp -vf "${script_dir}/runc" "${bin_dir}/"
+    chmod +x -R "${bin_dir}/"
+    cp -vf "${script_dir}/oci-config.json" "${oci_dir}/config.json"
+    cp -vf "${script_dir}/runc-etcd.service" "/etc/systemd/system/${base_name}.service"
+    sed -i "s/runc-etcd/${base_name}/g" "${oci_dir}/config.json" "/etc/systemd/system/${base_name}.service"
 
     # Generate etcd config-file
     clr_green "Set etcd config file"
-    cat > ${YML_FILE} <<EOF
-name:                        ${NODE_NAME}
+    cat > "$yml_file" <<EOF
+name:                        ${node_name}
 max-txn-ops:                 1024
 data-dir:                    /.etcd/data
-advertise-client-urls:       http://${HOST_IP}:${CLIENT_PORT}
-listen-peer-urls:            http://${HOST_IP}:${PEER_PORT}
-listen-client-urls:          http://${HOST_IP}:${CLIENT_PORT}
-initial-advertise-peer-urls: http://${HOST_IP}:${PEER_PORT}
-initial-cluster:             ${EXISTING_CLUSTER}${NODE_NAME}=http://${HOST_IP}:${PEER_PORT}
-initial-cluster-state:       ${CLUSTER_STATE}
-initial-cluster-token:       ${BASE_NAME}
+advertise-client-urls:       http://${host_ip}:${client_port}
+listen-peer-urls:            http://${host_ip}:${peer_port}
+listen-client-urls:          http://${host_ip}:${client_port}
+initial-advertise-peer-urls: http://${host_ip}:${peer_port}
+initial-cluster:             ${existing_cluster}${node_name}=http://${host_ip}:${peer_port}
+initial-cluster-state:       ${cluster_state}
+initial-cluster-token:       ${base_name}
 auto-compaction-rate:        3
 quota-backend-bytes:         $(( 8 * 1024 ** 3))
 snapshot-count:              5000
 enable-v2:                   true
 EOF
-    cat ${YML_FILE}
+    cat "$yml_file"
 
     # Verify config.json
     clr_green "Set OCI args"
-    grep -A3 '\"args\"\: \[' ${OCI_DIR}/config.json
+    grep -A3 '\"args\"\: \[' "$oci_dir/config.json"
 
     clr_green "Set OCI datadir binding"
-    sed -i "s#_ETCD_DATA_DIR_#${VAR_DIR}#" ${OCI_DIR}/config.json
-    grep -A7 -B1 '"destination": "/.etcd",' ${OCI_DIR}/config.json
+    sed -i "s#_ETCD_DATA_DIR_#${var_dir}#" "${oci_dir}/config.json"
+    grep -A7 -B1 '"destination": "/.etcd",' "${oci_dir}/config.json"
 
     clr_green "Set OCI env"
-    sed -i "s#ETCDCTL_API=#&2#" ${OCI_DIR}/config.json
-    sed -i "s#ETCDCTL_ENDPOINTS=#&http://${HOST_IP}:${CLIENT_PORT}#" ${OCI_DIR}/config.json
-    grep -A6 '\"env\"\: \[' ${OCI_DIR}/config.json 
+    sed -i "s#ETCDCTL_API=#&2#" "${oci_dir}/config.json"
+    sed -i "s#ETCDCTL_ENDPOINTS=#&http://${host_ip}:${client_port}#" "${oci_dir}/config.json"
+    grep -A6 '\"env\"\: \[' "${oci_dir}/config.json"
 
-    # Start ${BASE_NAME}.service
+    # Start ${base_name}.service
     _start_service    
 
     # Check cluster health 
     _status
 
     # Hide init_cluster
-    [ ${FLAGS_hide_init} -eq ${FLAGS_TRUE} ] && FLAGS_yes=true && _hide_init
+    [ "$FLAGS_hide_init" -eq "$FLAGS_TRUE" ] && FLAGS_yes=true && _hide_init
 }
 
 _extract_rootfs() {
     clr_green "Extract OCI rootfs" 
-    [ ${FLAGS_pull} -eq ${FLAGS_TRUE} ] || ${UPGRADE} && docker pull ${IMAGE_ADDR}
-    printf "${IMAGE_ADDR}  "
-    mkdir -vp ${ROOTFS_DIR}
-    docker export $( docker create --rm ${IMAGE_ADDR} ) | \
-    tar -C ${ROOTFS_DIR} --checkpoint=200 --checkpoint-action=exec='printf "\b=>"' -xf -
-    echo " ${ROOTFS_DIR}/"
+    [ "$FLAGS_pull" -eq "$FLAGS_TRUE" ] || "$upgrade" && docker pull "$image_addr"
+    printf "%s  " "$image_addr"
+    mkdir -vp "$rootfs_dir"
+    container_id="$( docker create --rm "$image_addr" )"
+    docker export "$container_id" | \
+    tar -C "$rootfs_dir" --checkpoint=200 --checkpoint-action=exec='printf "\b=>"' -xf -
+    echo " ${rootfs_dir}/"
+    docker rm -f "$container_id"
 }
 
 _start_service() {
-    clr_green "Start ${BASE_NAME}.service"
+    clr_green "Start ${base_name}.service"
     systemctl daemon-reload
-    systemctl enable --now ${BASE_NAME}
+    systemctl enable --now "$base_name"
     sleep 5
-    systemctl status ${BASE_NAME} | grep -w "Loaded\|Active"
+    systemctl status "$base_name" | grep -w "Loaded\|Active"
 }
 
 _hide_init() {
     clr_brown "WARN: Remove initial_cluster environmental variables" 
-    sed -i '/initial-cluster:/d' ${YML_FILE}
-    sed -i 's/initial-cluster-state:       new/initial-cluster-state:       existing/' ${YML_FILE}
+    sed -i '/initial-cluster:/d' "$yml_file"
+    sed -i 's/initial-cluster-state:       new/initial-cluster-state:       existing/' "$yml_file"
 
     _getconf
 
-    clr_brown "WARN: Restart ${BASE_NAME}.service"    
-    confirm ${FLAGS_yes} || exit 1
+    clr_brown "WARN: Restart ${base_name}.service"    
+    confirm "$FLAGS_yes" || exit 1
 
-    systemctl restart ${BASE_NAME}
+    systemctl restart "$base_name"
     sleep 3
 
     _status 
@@ -467,12 +469,12 @@ _hide_init() {
 _del_keys() {
     clr_red "ATTENTION: Will ireversibly delete user data!"
 
-    if [ ${FLAGS_all} -eq ${FLAGS_TRUE} ]; then
-        KEYS=""
+    if [ "$FLAGS_all" -eq "$FLAGS_TRUE" ]; then
+        keys=""
         clr_brown "WARN: Delete all / entries!"
-    elif [ ! -z ${FLAGS_key} ]; then
-        KEYS=${FLAGS_key}
-        clr_brown "WARN: Delete ${KEYS} entries!"
+    elif [ "$FLAGS_key" ]; then
+        keys="$FLAGS_key"
+        clr_brown "WARN: Delete ${keys} entries!"
     else
         clr_red "ERROR: Need to provide prefix or use --all"
         exit 1
@@ -480,20 +482,20 @@ _del_keys() {
 
     confirm ${FLAGS_yes} || exit 1
 
-    clr_brown "Delete entries for prefix: ${KEYS}"
-    ${BIN_DIR}/runc exec -e ETCDCTL_API=3 \
-    ${BASE_NAME} etcdctl del --prefix "${KEYS}" 
+    clr_brown "Delete entries for prefix: ${keys}"
+    "${bin_dir}/runc" exec -e ETCDCTL_API=3 \
+    "$base_name" etcdctl del --prefix "$keys" 
 
-    clr_brown "Check number of entries for prefix: ${KEYS}"
-    ${BIN_DIR}/runc exec -e ETCDCTL_API=3 \
-    ${BASE_NAME} etcdctl get --prefix "${KEYS}" | wc -l
+    clr_brown "Check number of entries for prefix: ${keys}"
+    "${bin_dir}/runc" exec -e ETCDCTL_API=3 \
+    "$base_name" etcdctl get --prefix "$keys" | wc -l
 }
 
 FLAGS "$@" || exit $?
-eval set -- "${FLAGS_ARGV}"
+eval set -- "$FLAGS_ARGV"
 
 set -e -o pipefail
 _main "$@"
 
-cd "${WORK_DIR}"
+cd "$work_dir"
 
