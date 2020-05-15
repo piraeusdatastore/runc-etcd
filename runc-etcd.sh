@@ -133,6 +133,10 @@ __etcdctl3() {
     "${bin_dir}/runc" exec -e ETCDCTL_API=3 "$base_name" etcdctl "$@"
 }
 
+__get_local_ep() {
+     "${bin_dir}/runc" exec "$base_name" printenv ETCDCTL_ENDPOINTS
+}
+
 _create() { 
     [ -z "${FLAGS_ip}" ] && clr_red "ERROR: Must provide an IP or Hostname by --ip" && exit 1
 
@@ -216,7 +220,8 @@ _remove() {
     if [ "$FLAGS_force" -eq "$FLAGS_FALSE" ]; then
         if "$bin_dir/runc" list | grep -qw "$base_name .* running"; then 
             clr_green "Check local member status"
-            local_member_spec="$( __etcdctl2 member list | grep "clientURLs=${ETCDCTL_ENDPOINTS}" )"
+            local_endpoints="$( __get_local_ep )"
+            local_member_spec="$( __etcdctl2 member list | grep "clientURLs=${local_endpoints}" )"
             echo "$local_member_spec"
             local_member_id="$( echo "$local_member_spec" | awk 'BEGIN {FS =":"}{print $1}' )"
             #_etcdctl2 cluster-health | grep ${local_member_id}
@@ -292,7 +297,7 @@ _status() {
     echo "$( clr_brown 'Watch container:' )  ${bin_dir}/runc list"
     echo "$( clr_brown 'Check health:' )     ${bin_dir}/runc exec ${base_name} etcdctl cluster-health"
     host_ip="$( awk -F: '/listen-client-urls/{print $3}' "$yml_file" | sed 's#/##g' )"
-    echo "$( clr_brown 'Expand cluster:' )   ./${base_name}.sh join -i ${host_ip}"
+    # echo "$( clr_brown 'Expand cluster:' )   ./runc.sh -p ${FLAGS_prefix} join -i ${host_ip}"
 }
 
 _backup() {
