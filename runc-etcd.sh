@@ -312,6 +312,12 @@ _backup() {
         __etcdctl3 snapshot save /.etcd/snapshot.db || true
         mv -vf "$var_dir/snapshot.db" "$backup_dir/" || true
 
+        clr_green "Save keys as txt"
+        __etcdctl3 get --prefix '' -w simple > "$backup_dir"/keys.txt  || true
+
+        clr_green "Save keys as json"
+        __etcdctl3 get --prefix '' -w json | "${script_dir}/lib/gojq" . > "$backup_dir"/keys.json  || true
+
         # clr_green "Backup v2 (experimental)"
         # __etcdctl2 backup \
         # --data-dir /.etcd/data \
@@ -321,7 +327,7 @@ _backup() {
     fi
 
 
-    clr_green "Backed up at ${backup_dir}:"
+    clr_green "Backed up at ${backup_dir}"
     ls -lh "$backup_dir"
 }
 
