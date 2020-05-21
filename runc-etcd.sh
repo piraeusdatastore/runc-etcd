@@ -361,6 +361,7 @@ _restore() {
     cp -vf "$snapshot_file" "${var_dir}/"
     rm -vfr "${var_dir}/data.restored"
     __etcdctl3 snapshot restore /.etcd/snapshot.db \
+    --skip-hash-check=true \
     --data-dir /.etcd/data.restored \
     --name "$( awk '/name:/ {print $2}' "$yml_file" )" \
     --initial-cluster "$( awk '/initial-cluster:/ {print $2}' "$yml_file" )" \
